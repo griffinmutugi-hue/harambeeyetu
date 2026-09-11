@@ -1,11 +1,32 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/AppHeader";
-import { getCampaign } from "@/lib/campaigns";
+import { getCampaignDetail } from "@/lib/campaigns.functions";
 import { Check, Copy, MessageCircle } from "lucide-react";
 import { useState } from "react";
 
+const detailQuery = (id: string) =>
+  queryOptions({
+    queryKey: ["campaign", id],
+    queryFn: () => getCampaignDetail({ data: { id } }),
+  });
+
 export const Route = createFileRoute("/share/$id")({
+  head: () => ({
+    meta: [
+      { title: "Share your Harambee" },
+      { name: "description", content: "Share your campaign link on WhatsApp and rally your people." },
+      { property: "og:title", content: "Share your Harambee" },
+      { property: "og:description", content: "Share your campaign link on WhatsApp and rally your people." },
+    ],
+  }),
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: ShareScreen,
+  errorComponent: () => (
+    <div className="app-shell flex min-h-screen items-center justify-center px-6 text-center">
+      <Link to="/" className="text-primary underline">Back to discovery</Link>
+    </div>
+  ),
   notFoundComponent: () => (
     <div className="app-shell flex min-h-screen items-center justify-center px-6 text-center">
       <Link to="/" className="text-primary underline">Back to discovery</Link>
@@ -15,18 +36,25 @@ export const Route = createFileRoute("/share/$id")({
 
 function ShareScreen() {
   const { id } = Route.useParams();
-  const campaign = getCampaign(id);
-  if (!campaign) throw notFound();
+  const { data: campaign } = useSuspenseQuery(detailQuery(id));
+  const [copied, setCopied] = useState(false);
 
   const url =
     typeof window !== "undefined"
       ? `${window.location.origin}/campaign/${id}`
       : `/campaign/${id}`;
 
+  if (!campaign) {
+    return (
+      <div className="app-shell flex min-h-screen items-center justify-center px-6 text-center">
+        <Link to="/" className="text-primary underline">Back to discovery</Link>
+      </div>
+    );
+  }
+
   const message = `Hi! I just started a harambee on Harambee: "${campaign.title}". Every shilling counts — please support if you can: ${url}`;
   const waLink = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
-  const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
@@ -44,24 +72,22 @@ function ShareScreen() {
           <Check className="h-8 w-8" strokeWidth={3} />
         </div>
         <p className="mt-4 text-xs font-semibold uppercase tracking-[0.18em] text-flag-red">Harambee launched</p>
-        <h1 className="mt-2 font-display text-2xl font-bold leading-tight">
-          Now spread the word.
-        </h1>
+        <h1 className="mt-2 font-display text-2xl font-bold leading-tight">Now spread the word.</h1>
         <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
           A harambee only works when the village shows up. Share with family, WhatsApp groups, and your church or chama.
         </p>
       </div>
 
-      {/* Campaign preview card */}
       <div className="mx-5 mt-6 overflow-hidden rounded-2xl border border-border bg-card" style={{ boxShadow: "var(--shadow-card)" }}>
-        <img src={campaign.image} alt={campaign.title} className="aspect-[5/3] w-full object-cover" />
+        {campaign.image && (
+          <img src={campaign.image} alt={campaign.title} className="aspect-[5/3] w-full object-cover" />
+        )}
         <div className="p-4">
           <h3 className="font-display text-base font-bold">{campaign.title}</h3>
           <p className="mt-1 text-xs text-muted-foreground">by {campaign.organizer}</p>
         </div>
       </div>
 
-      {/* Link */}
       <div className="px-5 pt-6">
         <label className="text-xs font-semibold text-muted-foreground">Campaign link</label>
         <div className="mt-1.5 flex items-center gap-2 rounded-2xl border border-border bg-card p-2 pl-4">
@@ -76,7 +102,6 @@ function ShareScreen() {
         </div>
       </div>
 
-      {/* Actions */}
       <div className="space-y-3 px-5 pt-5 pb-10">
         <a
           href={waLink}

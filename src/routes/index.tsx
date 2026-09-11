@@ -1,29 +1,41 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/AppHeader";
 import { CampaignCard } from "@/components/CampaignCard";
-import { getAllCampaigns } from "@/lib/campaigns";
+import { listActiveCampaigns } from "@/lib/campaigns.functions";
 import { useState } from "react";
+
+const campaignsQuery = queryOptions({
+  queryKey: ["campaigns", "active"],
+  queryFn: () => listActiveCampaigns(),
+});
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Harambee — Crowdfunding for Kenya" },
       { name: "description", content: "Start, share, and support harambees. Real causes, real people, M-Pesa simple." },
+      { property: "og:title", content: "Harambee — Crowdfunding for Kenya" },
+      { property: "og:description", content: "Start, share, and support harambees. Real causes, real people, M-Pesa simple." },
     ],
   }),
+  loader: ({ context }) => context.queryClient.ensureQueryData(campaignsQuery),
   component: Discovery,
+  errorComponent: () => (
+    <div className="app-shell px-5 py-24 text-center">
+      <p className="text-sm text-muted-foreground">We couldn't load the campaigns. Please refresh.</p>
+    </div>
+  ),
 });
 
 const filters = ["All", "Medical", "Education", "Community", "Other"] as const;
 
 function Discovery() {
-  const all = getAllCampaigns();
+  const { data: all } = useSuspenseQuery(campaignsQuery);
   const [active, setActive] = useState<(typeof filters)[number]>("All");
 
   const list =
-    active === "All"
-      ? all
-      : all.filter((c) => c.category === active.toLowerCase());
+    active === "All" ? all : all.filter((c) => c.category === active.toLowerCase());
 
   const totalRaised = all.reduce((s, c) => s + c.raised, 0);
 
@@ -45,7 +57,7 @@ function Discovery() {
           <div className="flex-1">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Raised on Harambee</p>
             <p className="font-display text-lg font-bold text-foreground">
-              KES {totalRaised.toLocaleString("en-KE")}
+              KES {Math.round(totalRaised).toLocaleString("en-KE")}
             </p>
           </div>
           <p className="text-right text-[11px] text-muted-foreground">

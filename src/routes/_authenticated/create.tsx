@@ -1,11 +1,21 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { AppHeader } from "@/components/AppHeader";
-import { addCampaign, type Category } from "@/lib/campaigns";
+import { type Category } from "@/lib/campaigns";
+import { createCampaign } from "@/lib/campaigns.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Upload, Heart, GraduationCap, Users, Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 
-export const Route = createFileRoute("/create")({
-  head: () => ({ meta: [{ title: "Start a Harambee" }] }),
+export const Route = createFileRoute("/_authenticated/create")({
+  head: () => ({
+    meta: [
+      { title: "Start a Harambee — Harambee" },
+      { name: "description", content: "Create a campaign, set your goal and rally your people around a cause that matters." },
+      { property: "og:title", content: "Start a Harambee" },
+      { property: "og:description", content: "Create a campaign, set your goal and rally your people around a cause that matters." },
+    ],
+  }),
   component: CreateCampaign,
 });
 
@@ -19,28 +29,58 @@ const categories: { id: Category; label: string; icon: React.ReactNode }[] = [
 function CreateCampaign() {
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
+  const create = useServerFn(createCampaign);
 
   const [title, setTitle] = useState("");
   const [organizer, setOrganizer] = useState("");
   const [story, setStory] = useState("");
   const [goal, setGoal] = useState<number>(50000);
   const [category, setCategory] = useState<Category>("community");
-  const [image, setImage] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
 
-  const valid = title && story && goal > 0 && image;
+  const valid = title.trim().length > 3 && story.trim() && goal > 0 && file;
 
   const handleFile = (f?: File) => {
     if (!f) return;
-    const reader = new FileReader();
-    reader.onload = () => setImage(reader.result as string);
-    reader.readAsDataURL(f);
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid) return;
-    const c = addCampaign({ title, organizer, story, goal, category, image });
-    navigate({ to: "/share/$id", params: { id: c.id } });
+    if (!valid || !file) return;
+    setBusy(true);
+    setError("");
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) throw new Error("Please sign in again.");
+
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${uid}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from("campaign-photos")
+        .upload(path, file, { contentType: file.type, upsert: false });
+      if (uploadError) throw uploadError;
+
+      const result = await create({
+        data: {
+          title: title.trim(),
+          story: story.trim(),
+          goalAmount: goal,
+          category,
+          coverPhoto: path,
+          organizerName: organizer.trim(),
+        },
+      });
+      navigate({ to: "/share/$id", params: { id: result.id } });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn't publish your campaign. Please try again.");
+      setBusy(false);
+    }
   };
 
   return (
@@ -53,7 +93,6 @@ function CreateCampaign() {
       </div>
 
       <form onSubmit={submit} className="mt-6 space-y-5 px-5">
-        {/* Photo upload */}
         <div>
           <label className="text-xs font-semibold text-muted-foreground">Campaign photo</label>
           <button
@@ -61,8 +100,8 @@ function CreateCampaign() {
             onClick={() => fileRef.current?.click()}
             className="mt-1 flex aspect-[5/3] w-full items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-border bg-card transition hover:border-primary"
           >
-            {image ? (
-              <img src={image} alt="Preview" className="h-full w-full object-cover" />
+            {preview ? (
+              <img src={preview} alt="Preview" className="h-full w-full object-cover" />
             ) : (
               <div className="text-center">
                 <Upload className="mx-auto h-7 w-7 text-muted-foreground" />
@@ -143,12 +182,14 @@ function CreateCampaign() {
           </div>
         </div>
 
+        {error && <p className="text-sm text-flag-red">{error}</p>}
+
         <button
           type="submit"
-          disabled={!valid}
+          disabled={!valid || busy}
           className="mt-2 w-full rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground transition disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Launch Harambee
+          {busy ? "Publishing…" : "Launch Harambee"}
         </button>
       </form>
 
