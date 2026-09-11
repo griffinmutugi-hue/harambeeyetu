@@ -2,10 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
+import { useAuth } from "@/hooks/useAuth";
 import { categoryLabel, formatKES, type Category } from "@/lib/campaigns";
-import { getCampaignDetail, submitDonation } from "@/lib/campaigns.functions";
+import { getCampaignDetail, postCampaignUpdate, submitDonation } from "@/lib/campaigns.functions";
 import { Check, MessageCircle, Share2, X } from "lucide-react";
 
 const detailQuery = (id: string) =>
