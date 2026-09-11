@@ -2,10 +2,12 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
+import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
+import { useAuth } from "@/hooks/useAuth";
 import { categoryLabel, formatKES, type Category } from "@/lib/campaigns";
-import { getCampaignDetail, submitDonation } from "@/lib/campaigns.functions";
+import { getCampaignDetail, postCampaignUpdate, submitDonation } from "@/lib/campaigns.functions";
 import { Check, MessageCircle, Share2, X } from "lucide-react";
 
 const detailQuery = (id: string) =>
@@ -111,19 +113,7 @@ function CampaignDetail() {
           </p>
         </section>
 
-        {campaign.updates.length > 0 && (
-          <section className="mt-7">
-            <h2 className="font-display text-base font-bold">Updates</h2>
-            <div className="mt-3 space-y-3">
-              {campaign.updates.map((u) => (
-                <div key={u.id} className="rounded-2xl border border-border bg-card p-4">
-                  <p className="text-sm leading-relaxed text-foreground/85">{u.content}</p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">{u.when}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {isOrganizer && <PostUpdate campaignId={id} />}
 
         <section className="mt-7">
           <h2 className="font-display text-base font-bold">
@@ -145,6 +135,25 @@ function CampaignDetail() {
             {campaign.donors.length === 0 && (
               <p className="py-6 text-center text-sm text-muted-foreground">
                 Be the first to give to this harambee.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-7">
+          <h2 className="font-display text-base font-bold">Updates</h2>
+          <div className="mt-3 space-y-3">
+            {campaign.updates.map((u) => (
+              <div key={u.id} className="rounded-2xl border border-border bg-card p-4">
+                <p className="text-sm leading-relaxed text-foreground/85">{u.content}</p>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  <span className="font-semibold text-primary">{campaign.organizer}</span> · {u.when}
+                </p>
+              </div>
+            ))}
+            {campaign.updates.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                The organizer hasn't posted any updates yet.
               </p>
             )}
           </div>
