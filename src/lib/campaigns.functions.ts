@@ -212,8 +212,8 @@ export const submitDonation = createServerFn({ method: "POST" })
     const { error } = await client.rpc("record_donation", {
       _campaign_id: data.campaignId,
       _amount: data.amount,
-      _donor_name: data.donorName || null,
-      _message: data.message || null,
+      _donor_name: data.donorName || undefined,
+      _message: data.message || undefined,
       _is_anonymous: data.isAnonymous || !data.donorName,
       _mpesa_transaction_id: reference,
     });
