@@ -96,7 +96,7 @@ function CampaignDetail() {
             <p className="font-display text-lg font-bold text-foreground">{pct}%</p>
           </div>
           <div className="mt-3">
-            <ProgressBar value={pct} />
+            <ProgressBar raised={campaign.raised} goal={campaign.goal} />
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
             <span><b className="text-foreground">{campaign.donorCount}</b> donors</span>
