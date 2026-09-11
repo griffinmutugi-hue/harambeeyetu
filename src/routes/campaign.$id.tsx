@@ -1,233 +1,331 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
-import { addDonation, categoryLabel, formatKES, getCampaign } from "@/lib/campaigns";
-import { Clock, Users, Target, X, Share2 } from "lucide-react";
-import { useState } from "react";
+import { categoryLabel, formatKES, type Category } from "@/lib/campaigns";
+import { getCampaignDetail, submitDonation } from "@/lib/campaigns.functions";
+import { Check, MessageCircle, Share2, X } from "lucide-react";
+
+const detailQuery = (id: string) =>
+  queryOptions({
+    queryKey: ["campaign", id],
+    queryFn: () => getCampaignDetail({ data: { id } }),
+  });
 
 export const Route = createFileRoute("/campaign/$id")({
+  head: () => ({
+    meta: [
+      { title: "Campaign — Harambee" },
+      { name: "description", content: "Read the story, see the progress and support this harambee with M-Pesa." },
+      { property: "og:title", content: "Campaign — Harambee" },
+      { property: "og:description", content: "Read the story, see the progress and support this harambee with M-Pesa." },
+    ],
+  }),
+  loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: CampaignDetail,
-  notFoundComponent: () => (
+  errorComponent: () => (
     <div className="app-shell flex min-h-screen items-center justify-center px-6 text-center">
       <div>
-        <h1 className="font-display text-2xl font-bold">Campaign not found</h1>
-        <Link to="/" className="mt-4 inline-block text-primary underline">Back to discovery</Link>
+        <p className="text-sm text-muted-foreground">We couldn't load this campaign.</p>
+        <Link to="/" className="mt-3 block text-primary underline">Back to discovery</Link>
       </div>
+    </div>
+  ),
+  notFoundComponent: () => (
+    <div className="app-shell flex min-h-screen items-center justify-center px-6 text-center">
+      <Link to="/" className="text-primary underline">Back to discovery</Link>
     </div>
   ),
 });
 
 function CampaignDetail() {
   const { id } = Route.useParams();
-  const initial = getCampaign(id);
-  if (!initial) throw notFound();
-  const [campaign, setCampaign] = useState(initial);
+  const navigate = useNavigate();
+  const { data: campaign } = useSuspenseQuery(detailQuery(id));
   const [open, setOpen] = useState(false);
 
+  if (!campaign) {
+    return (
+      <div className="app-shell flex min-h-screen items-center justify-center px-6 text-center">
+        <Link to="/" className="text-primary underline">Back to discovery</Link>
+      </div>
+    );
+  }
+
   const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
+
+  const share = async () => {
+    const url = `${window.location.origin}/campaign/${id}`;
+    const text = `Support "${campaign.title}" on Harambee — every shilling counts: ${url}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: campaign.title, text, url });
+        return;
+      } catch {}
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+  };
 
   return (
     <div className="app-shell pb-32">
       <AppHeader back />
 
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <img src={campaign.image} alt={campaign.title} width={1024} height={768} className="h-full w-full object-cover" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background to-transparent" />
-        <div className="absolute left-4 top-4 chip bg-background/90 text-foreground backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-flag-red" />
-          {categoryLabel[campaign.category]}
+      {campaign.image && (
+        <div className="relative">
+          <img src={campaign.image} alt={campaign.title} className="aspect-[5/4] w-full object-cover" />
+          <span className="absolute left-4 top-4 rounded-full bg-background/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
+            {categoryLabel[campaign.category as Category] ?? "Other"}
+          </span>
         </div>
-      </div>
+      )}
 
-      <div className="space-y-6 px-5 pt-4">
-        <div>
-          <h1 className="font-display text-2xl font-bold leading-tight">{campaign.title}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Organized by <span className="font-semibold text-foreground">{campaign.organizer}</span></p>
-        </div>
+      <div className="px-5 pt-5">
+        <h1 className="font-display text-2xl font-bold leading-tight">{campaign.title}</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Organized by <span className="font-semibold text-foreground">{campaign.organizer}</span>
+        </p>
 
-        <div className="rounded-2xl border border-border bg-card p-5" style={{ boxShadow: "var(--shadow-card)" }}>
-          <div className="flex items-baseline justify-between">
-            <p className="font-display text-2xl font-bold text-primary">{formatKES(campaign.raised)}</p>
-            <p className="text-xs text-muted-foreground">of {formatKES(campaign.goal)}</p>
+        <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="font-display text-2xl font-bold text-primary">{formatKES(campaign.raised)}</p>
+              <p className="text-xs text-muted-foreground">raised of {formatKES(campaign.goal)}</p>
+            </div>
+            <p className="font-display text-lg font-bold text-foreground">{pct}%</p>
           </div>
-          <div className="mt-3"><ProgressBar raised={campaign.raised} goal={campaign.goal} /></div>
-          <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-            <Stat icon={<Target className="h-4 w-4" />} label="Funded" value={`${pct}%`} />
-            <Stat icon={<Users className="h-4 w-4" />} label="Donors" value={`${campaign.donors.length}`} />
-            <Stat icon={<Clock className="h-4 w-4" />} label="Days left" value={`${campaign.daysLeft}`} />
+          <div className="mt-3">
+            <ProgressBar value={pct} />
+          </div>
+          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+            <span><b className="text-foreground">{campaign.donorCount}</b> donors</span>
+            <span><b className="text-foreground">{campaign.daysLeft}</b> days left</span>
           </div>
         </div>
 
-        <div>
-          <h2 className="font-display text-lg font-bold">The story</h2>
-          <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-foreground/85">{campaign.story}</p>
-        </div>
+        <section className="mt-6">
+          <h2 className="font-display text-base font-bold">The story</h2>
+          <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-foreground/85">
+            {campaign.story}
+          </p>
+        </section>
 
-        <div>
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg font-bold">Recent donors</h2>
-            <span className="text-xs text-muted-foreground">{campaign.donors.length} total</span>
-          </div>
-          <ul className="mt-3 divide-y divide-border rounded-2xl border border-border bg-card">
-            {campaign.donors.length === 0 && (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">Be the first to donate ❤</li>
-            )}
-            {campaign.donors.slice(0, 8).map((d, i) => (
-              <li key={i} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
-                    {d.name.charAt(0).toUpperCase()}
-                  </span>
-                  <div>
-                    <p className="text-sm font-semibold">{d.name}</p>
-                    <p className="text-[11px] text-muted-foreground">{d.when}</p>
-                  </div>
+        {campaign.updates.length > 0 && (
+          <section className="mt-7">
+            <h2 className="font-display text-base font-bold">Updates</h2>
+            <div className="mt-3 space-y-3">
+              {campaign.updates.map((u) => (
+                <div key={u.id} className="rounded-2xl border border-border bg-card p-4">
+                  <p className="text-sm leading-relaxed text-foreground/85">{u.content}</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">{u.when}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="mt-7">
+          <h2 className="font-display text-base font-bold">
+            Donors <span className="text-muted-foreground">({campaign.donorCount})</span>
+          </h2>
+          <div className="mt-3 space-y-2.5">
+            {campaign.donors.map((d, i) => (
+              <div key={i} className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-bold text-primary">
+                  {d.name.charAt(0).toUpperCase()}
+                </span>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{d.name}</p>
+                  <p className="text-[11px] text-muted-foreground">{d.when}</p>
                 </div>
                 <p className="font-display text-sm font-bold text-foreground">{formatKES(d.amount)}</p>
-              </li>
+              </div>
             ))}
-          </ul>
-        </div>
+            {campaign.donors.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                Be the first to give to this harambee.
+              </p>
+            )}
+          </div>
+        </section>
+
+        <button
+          onClick={share}
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-full border border-border bg-card py-3.5 text-sm font-semibold text-foreground"
+        >
+          <Share2 className="h-4 w-4" />
+          Share this harambee
+        </button>
       </div>
 
-      {/* Sticky donate bar */}
-      <div className="fixed inset-x-0 bottom-0 z-30">
-        <div className="mx-auto max-w-md border-t border-border bg-background/95 px-5 py-4 backdrop-blur-md">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigator.share?.({ title: campaign.title, url: window.location.href }).catch(() => {})}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-card text-foreground"
-              aria-label="Share"
-            >
-              <Share2 className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setOpen(true)}
-              className="flex-1 rounded-full bg-accent px-5 py-3.5 font-display text-base font-bold text-accent-foreground transition-transform active:scale-[0.98]"
-            >
-              Donate Now
-            </button>
-          </div>
-        </div>
+      <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/95 px-5 py-4 backdrop-blur-md">
+        <button
+          onClick={() => setOpen(true)}
+          className="w-full rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground transition-transform active:scale-[0.98]"
+        >
+          Donate Now
+        </button>
       </div>
 
       {open && (
         <DonateModal
+          campaignId={id}
           onClose={() => setOpen(false)}
-          onConfirm={(amount, name) => {
-            addDonation(campaign.id, name, amount);
-            setCampaign({
-              ...campaign,
-              raised: campaign.raised + amount,
-              donors: [{ name: name || "Anonymous", amount, when: "just now" }, ...campaign.donors],
-            });
-            setOpen(false);
-          }}
+          onDone={() => navigate({ to: "/campaign/$id", params: { id } })}
         />
       )}
     </div>
   );
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div>
-      <div className="mx-auto flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-foreground">{icon}</div>
-      <p className="mt-1.5 font-display text-sm font-bold">{value}</p>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
-    </div>
-  );
-}
+const quickAmounts = [200, 500, 1000, 5000];
 
-function DonateModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (amount: number, name: string) => void }) {
-  const [amount, setAmount] = useState<number>(500);
+function DonateModal({
+  campaignId,
+  onClose,
+}: {
+  campaignId: string;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const donate = useServerFn(submitDonation);
+  const queryClient = useQueryClient();
+  const [amount, setAmount] = useState(500);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
-  const [processing, setProcessing] = useState(false);
+  const [anonymous, setAnonymous] = useState(false);
+  const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
+  const [error, setError] = useState("");
+  const [reference, setReference] = useState("");
 
-  const presets = [200, 500, 1000, 2500, 5000];
-
-  const submit = () => {
-    if (!amount || amount < 10) return;
-    setProcessing(true);
-    setTimeout(() => onConfirm(amount, name), 1100);
+  const confirm = async () => {
+    if (amount <= 0) return;
+    setStatus("sending");
+    setError("");
+    try {
+      const res = await donate({
+        data: {
+          campaignId,
+          amount,
+          donorName: anonymous ? "" : name.trim(),
+          isAnonymous: anonymous,
+        },
+      });
+      setReference(res.reference);
+      await queryClient.invalidateQueries({ queryKey: ["campaign", campaignId] });
+      await queryClient.invalidateQueries({ queryKey: ["campaigns", "active"] });
+      setStatus("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The donation didn't go through. Please try again.");
+      setStatus("idle");
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-flag-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="mx-auto w-full max-w-md rounded-t-3xl bg-card p-6 pb-8"
-        style={{ animation: "slideUp 0.25s ease" }}
-      >
-        <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-border" />
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-flag-red">M-Pesa</p>
-            <h3 className="font-display text-xl font-bold">Lipa na M-Pesa</h3>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-[480px] rounded-t-3xl border-t border-border bg-background p-5 pb-8">
+        {status === "done" ? (
+          <div className="py-6 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Check className="h-8 w-8" strokeWidth={3} />
+            </div>
+            <h3 className="mt-4 font-display text-xl font-bold">Asante sana!</h3>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Your {formatKES(amount)} has been added to this harambee.
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">Reference {reference}</p>
+            <button
+              onClick={onClose}
+              className="mt-6 w-full rounded-full bg-foreground py-3.5 font-display text-sm font-bold text-background"
+            >
+              Done
+            </button>
           </div>
-          <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary"><X className="h-4 w-4" /></button>
-        </div>
-
-        <div className="mt-5">
-          <label className="text-xs font-semibold text-muted-foreground">Amount (KES)</label>
-          <input
-            type="number"
-            inputMode="numeric"
-            value={amount || ""}
-            onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
-            className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 font-display text-2xl font-bold focus:border-primary focus:outline-none"
-          />
-          <div className="mt-2 flex flex-wrap gap-2">
-            {presets.map((p) => (
-              <button
-                key={p}
-                onClick={() => setAmount(p)}
-                className={
-                  "rounded-full px-3 py-1.5 text-xs font-semibold transition " +
-                  (amount === p ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground")
-                }
-              >
-                {p.toLocaleString()}
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display text-lg font-bold">Donate with M-Pesa</h3>
+              <button onClick={onClose} aria-label="Close" className="rounded-full p-2 hover:bg-secondary">
+                <X className="h-4 w-4" />
               </button>
-            ))}
-          </div>
-        </div>
+            </div>
 
-        <div className="mt-4">
-          <label className="text-xs font-semibold text-muted-foreground">M-Pesa phone number</label>
-          <input
-            type="tel"
-            placeholder="0712 345 678"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-base focus:border-primary focus:outline-none"
-          />
-        </div>
+            <div className="mt-5">
+              <label className="text-xs font-semibold text-muted-foreground">Amount (KES)</label>
+              <input
+                type="number"
+                inputMode="numeric"
+                value={amount || ""}
+                onChange={(e) => setAmount(parseInt(e.target.value) || 0)}
+                className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 font-display text-xl font-bold outline-none focus:border-primary"
+              />
+              <div className="mt-2 flex gap-2">
+                {quickAmounts.map((a) => (
+                  <button
+                    key={a}
+                    type="button"
+                    onClick={() => setAmount(a)}
+                    className={
+                      "flex-1 rounded-full py-2 text-xs font-semibold transition " +
+                      (amount === a ? "bg-foreground text-background" : "bg-secondary text-secondary-foreground")
+                    }
+                  >
+                    {a.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="mt-4">
-          <label className="text-xs font-semibold text-muted-foreground">Display name (optional)</label>
-          <input
-            type="text"
-            placeholder="Anonymous"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-base focus:border-primary focus:outline-none"
-          />
-        </div>
+            <div className="mt-4">
+              <label className="text-xs font-semibold text-muted-foreground">M-Pesa number</label>
+              <input
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                inputMode="tel"
+                placeholder="07XX XXX XXX"
+                className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-base outline-none focus:border-primary"
+              />
+            </div>
 
-        <button
-          disabled={processing || !amount || !phone}
-          onClick={submit}
-          className="mt-6 w-full rounded-full bg-primary py-4 font-display text-base font-bold text-primary-foreground transition disabled:opacity-50"
-        >
-          {processing ? "Sending STK push..." : `Confirm ${formatKES(amount || 0)}`}
-        </button>
-        <p className="mt-3 text-center text-[11px] text-muted-foreground">
-          You'll receive an M-Pesa prompt. Demo only — no real charge.
-        </p>
+            {!anonymous && (
+              <div className="mt-4">
+                <label className="text-xs font-semibold text-muted-foreground">Your name (shown to others)</label>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Brian K."
+                  className="mt-1 w-full rounded-xl border border-input bg-background px-4 py-3 text-base outline-none focus:border-primary"
+                />
+              </div>
+            )}
+
+            <label className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={anonymous}
+                onChange={(e) => setAnonymous(e.target.checked)}
+                className="h-4 w-4 accent-[var(--primary)]"
+              />
+              Give anonymously
+            </label>
+
+            {error && <p className="mt-3 text-sm text-flag-red">{error}</p>}
+
+            <button
+              onClick={confirm}
+              disabled={status === "sending" || amount <= 0}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground disabled:opacity-50"
+            >
+              <MessageCircle className="h-4 w-4" />
+              {status === "sending" ? "Confirming…" : `Confirm ${formatKES(amount || 0)}`}
+            </button>
+            <p className="mt-2 text-center text-[11px] text-muted-foreground">
+              Demo mode — no real money moves yet.
+            </p>
+          </>
+        )}
       </div>
-      <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
     </div>
   );
 }
