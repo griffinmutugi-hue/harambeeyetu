@@ -14,13 +14,208 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      campaign_updates: {
+        Row: {
+          campaign_id: string
+          content: string
+          created_at: string
+          creator_id: string | null
+          id: string
+        }
+        Insert: {
+          campaign_id: string
+          content: string
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+        }
+        Update: {
+          campaign_id?: string
+          content?: string
+          created_at?: string
+          creator_id?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_updates_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_updates_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          category: string
+          cover_photo: string | null
+          created_at: string
+          creator_id: string | null
+          current_amount: number
+          deadline: string | null
+          goal_amount: number
+          id: string
+          organizer_name: string
+          status: string
+          story: string | null
+          title: string
+        }
+        Insert: {
+          category?: string
+          cover_photo?: string | null
+          created_at?: string
+          creator_id?: string | null
+          current_amount?: number
+          deadline?: string | null
+          goal_amount: number
+          id?: string
+          organizer_name?: string
+          status?: string
+          story?: string | null
+          title: string
+        }
+        Update: {
+          category?: string
+          cover_photo?: string | null
+          created_at?: string
+          creator_id?: string | null
+          current_amount?: number
+          deadline?: string | null
+          goal_amount?: number
+          id?: string
+          organizer_name?: string
+          status?: string
+          story?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      donations: {
+        Row: {
+          amount: number
+          campaign_id: string
+          created_at: string
+          donor_id: string | null
+          donor_name: string | null
+          id: string
+          is_anonymous: boolean
+          message: string | null
+          mpesa_transaction_id: string | null
+        }
+        Insert: {
+          amount: number
+          campaign_id: string
+          created_at?: string
+          donor_id?: string | null
+          donor_name?: string | null
+          id?: string
+          is_anonymous?: boolean
+          message?: string | null
+          mpesa_transaction_id?: string | null
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          created_at?: string
+          donor_id?: string | null
+          donor_name?: string | null
+          id?: string
+          is_anonymous?: boolean
+          message?: string | null
+          mpesa_transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_donor_id_fkey"
+            columns: ["donor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          profile_photo: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          name?: string
+          phone?: string | null
+          profile_photo?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          profile_photo?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      record_donation: {
+        Args: {
+          _amount: number
+          _campaign_id: string
+          _donor_name?: string
+          _is_anonymous?: boolean
+          _message?: string
+          _mpesa_transaction_id?: string
+        }
+        Returns: {
+          amount: number
+          campaign_id: string
+          created_at: string
+          donor_id: string | null
+          donor_name: string | null
+          id: string
+          is_anonymous: boolean
+          message: string | null
+          mpesa_transaction_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "donations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
