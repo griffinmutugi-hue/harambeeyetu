@@ -79,7 +79,7 @@ function CampaignDetail() {
 
       {campaign.image && (
         <div className="relative">
-          <img src={campaign.image} alt={campaign.title} className="aspect-[5/4] w-full object-cover" />
+          <img src={campaign.image} alt={campaign.title} className="aspect-[5/4] w-full object-cover" suppressHydrationWarning />
           <span className="absolute left-4 top-4 rounded-full bg-background/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-foreground backdrop-blur">
             {categoryLabel[campaign.category as Category] ?? "Other"}
           </span>
