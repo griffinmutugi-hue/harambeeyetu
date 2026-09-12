@@ -58,6 +58,7 @@ function CampaignDetail() {
   }
 
   const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
+  const isOrganizer = !!user && !!campaign.creatorId && user.id === campaign.creatorId;
 
   const share = async () => {
     const url = `${window.location.origin}/campaign/${id}`;
@@ -186,6 +187,49 @@ function CampaignDetail() {
         />
       )}
     </div>
+  );
+}
+
+function PostUpdate({ campaignId }: { campaignId: string }) {
+  const post = useServerFn(postCampaignUpdate);
+  const queryClient = useQueryClient();
+  const [content, setContent] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  const submit = async () => {
+    const text = content.trim();
+    if (!text || posting) return;
+    setPosting(true);
+    try {
+      await post({ data: { campaignId, content: text } });
+      setContent("");
+      await queryClient.invalidateQueries({ queryKey: ["campaign", campaignId] });
+      toast.success("Update posted — your donors can see it now.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't post the update. Try again.");
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  return (
+    <section className="mt-6 rounded-2xl border border-border bg-card p-4">
+      <h2 className="font-display text-base font-bold">Post an update</h2>
+      <textarea
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        rows={3}
+        placeholder="Share a progress update with your donors..."
+        className="mt-2 w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none focus:border-primary"
+      />
+      <button
+        onClick={submit}
+        disabled={posting || content.trim().length < 2}
+        className="mt-3 w-full rounded-full bg-primary py-3 font-display text-sm font-bold text-primary-foreground disabled:opacity-50"
+      >
+        {posting ? "Posting…" : "Post Update"}
+      </button>
+    </section>
   );
 }
 
