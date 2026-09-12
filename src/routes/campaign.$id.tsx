@@ -46,6 +46,7 @@ function CampaignDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const { data: campaign } = useSuspenseQuery(detailQuery(id));
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
   if (!campaign) {
