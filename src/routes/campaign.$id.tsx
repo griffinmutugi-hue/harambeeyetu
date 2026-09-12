@@ -14,6 +14,7 @@ const detailQuery = (id: string) =>
   queryOptions({
     queryKey: ["campaign", id],
     queryFn: () => getCampaignDetail({ data: { id } }),
+    staleTime: 1000 * 60 * 5,
   });
 
 export const Route = createFileRoute("/campaign/$id")({
