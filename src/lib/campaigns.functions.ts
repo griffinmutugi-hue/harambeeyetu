@@ -136,11 +136,17 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
         .select("id, content, created_at")
         .eq("campaign_id", data.id)
         .order("created_at", { ascending: false }),
-      signPhotos(client, [row.cover_photo]),
+      signPhotos(client, [row.cover_photo, row.organizer_photo]),
     ]);
 
+    const mappedUpdates = (updates ?? []).map((u) => ({
+      id: u.id,
+      content: u.content,
+      when: relativeTime(u.created_at),
+    }));
+
     return {
-      ...toCampaign(row, photos),
+      ...toCampaign(row, photos, mappedUpdates[0] ?? null),
       donorCount: donations?.length ?? 0,
       donors: (donations ?? []).map((d) => ({
         name: d.is_anonymous || !d.donor_name ? "Anonymous" : d.donor_name,
