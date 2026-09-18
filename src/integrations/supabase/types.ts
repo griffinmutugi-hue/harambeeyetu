@@ -64,6 +64,7 @@ export type Database = {
           goal_amount: number
           id: string
           organizer_name: string
+          organizer_photo: string | null
           status: string
           story: string | null
           title: string
@@ -78,6 +79,7 @@ export type Database = {
           goal_amount: number
           id?: string
           organizer_name?: string
+          organizer_photo?: string | null
           status?: string
           story?: string | null
           title: string
@@ -92,6 +94,7 @@ export type Database = {
           goal_amount?: number
           id?: string
           organizer_name?: string
+          organizer_photo?: string | null
           status?: string
           story?: string | null
           title?: string
