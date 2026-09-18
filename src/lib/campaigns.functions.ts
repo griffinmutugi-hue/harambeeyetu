@@ -84,8 +84,31 @@ export const listActiveCampaigns = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const rows = data ?? [];
-    const photos = await signPhotos(client, rows.map((r) => r.cover_photo));
-    return rows.map((r) => toCampaign(r, photos));
+    const [photos, { data: updates }] = await Promise.all([
+      signPhotos(client, [
+        ...rows.map((r) => r.cover_photo),
+        ...rows.map((r) => r.organizer_photo),
+      ]),
+      client
+        .from("campaign_updates")
+        .select("id, campaign_id, content, created_at")
+        .in(
+          "campaign_id",
+          rows.map((r) => r.id),
+        )
+        .order("created_at", { ascending: false }),
+    ]);
+    const latest = new Map<string, Campaign["latestUpdate"]>();
+    for (const u of updates ?? []) {
+      if (!latest.has(u.campaign_id)) {
+        latest.set(u.campaign_id, {
+          id: u.id,
+          content: u.content,
+          when: relativeTime(u.created_at),
+        });
+      }
+    }
+    return rows.map((r) => toCampaign(r, photos, latest.get(r.id) ?? null));
   },
 );
 
