@@ -9,6 +9,7 @@ import {
   type Campaign,
   type CampaignDetail,
   type Category,
+  type OrganizerDashboard,
 } from "./campaigns";
 
 const BUCKET = "campaign-photos";
@@ -48,22 +49,29 @@ async function signPhotos(
 
 type CampaignRow = Database["public"]["Tables"]["campaigns"]["Row"];
 
-function toCampaign(row: CampaignRow, photo: Record<string, string>): Campaign {
+function resolvePhoto(path: string | null, photo: Record<string, string>): string {
+  if (!path) return "";
+  return path.startsWith("http") ? path : (photo[path] ?? "");
+}
+
+function toCampaign(
+  row: CampaignRow,
+  photo: Record<string, string>,
+  latestUpdate: Campaign["latestUpdate"] = null,
+): Campaign {
   return {
     id: row.id,
     title: row.title,
     organizer: row.organizer_name,
+    organizerPhoto: resolvePhoto(row.organizer_photo, photo),
     story: row.story ?? "",
     category: (row.category ?? "other") as Category,
     goal: Number(row.goal_amount),
     raised: Number(row.current_amount),
     daysLeft: daysUntil(row.deadline),
-    image: row.cover_photo
-      ? row.cover_photo.startsWith("http")
-        ? row.cover_photo
-        : (photo[row.cover_photo] ?? "")
-      : "",
+    image: resolvePhoto(row.cover_photo, photo),
     creatorId: row.creator_id,
+    latestUpdate,
   };
 }
 
@@ -77,8 +85,31 @@ export const listActiveCampaigns = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const rows = data ?? [];
-    const photos = await signPhotos(client, rows.map((r) => r.cover_photo));
-    return rows.map((r) => toCampaign(r, photos));
+    const [photos, { data: updates }] = await Promise.all([
+      signPhotos(client, [
+        ...rows.map((r) => r.cover_photo),
+        ...rows.map((r) => r.organizer_photo),
+      ]),
+      client
+        .from("campaign_updates")
+        .select("id, campaign_id, content, created_at")
+        .in(
+          "campaign_id",
+          rows.map((r) => r.id),
+        )
+        .order("created_at", { ascending: false }),
+    ]);
+    const latest = new Map<string, Campaign["latestUpdate"]>();
+    for (const u of updates ?? []) {
+      if (!latest.has(u.campaign_id)) {
+        latest.set(u.campaign_id, {
+          id: u.id,
+          content: u.content,
+          when: relativeTime(u.created_at),
+        });
+      }
+    }
+    return rows.map((r) => toCampaign(r, photos, latest.get(r.id) ?? null));
   },
 );
 
@@ -106,22 +137,107 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
         .select("id, content, created_at")
         .eq("campaign_id", data.id)
         .order("created_at", { ascending: false }),
-      signPhotos(client, [row.cover_photo]),
+      signPhotos(client, [row.cover_photo, row.organizer_photo]),
     ]);
 
+    const mappedUpdates = (updates ?? []).map((u) => ({
+      id: u.id,
+      content: u.content,
+      when: relativeTime(u.created_at),
+    }));
+
     return {
-      ...toCampaign(row, photos),
+      ...toCampaign(row, photos, mappedUpdates[0] ?? null),
       donorCount: donations?.length ?? 0,
       donors: (donations ?? []).map((d) => ({
         name: d.is_anonymous || !d.donor_name ? "Anonymous" : d.donor_name,
         amount: Number(d.amount),
         when: relativeTime(d.created_at),
       })),
+      updates: mappedUpdates,
+    };
+  });
+
+export const getOrganizerDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<OrganizerDashboard> => {
+    const { supabase, userId } = context;
+    const [{ data: profile }, { data: campaignRows, error }] = await Promise.all([
+      supabase.from("profiles").select("name, profile_photo").eq("id", userId).maybeSingle(),
+      supabase
+        .from("campaigns")
+        .select("*")
+        .eq("creator_id", userId)
+        .order("created_at", { ascending: false }),
+    ]);
+    if (error) throw new Error(error.message);
+    const rows = campaignRows ?? [];
+    const ids = rows.map((r) => r.id);
+    const titles = new Map(rows.map((r) => [r.id, r.title]));
+
+    const [{ data: donations }, { data: updates }, photos] = await Promise.all([
+      ids.length
+        ? supabase
+            .from("donations")
+            .select("id, campaign_id, donor_name, amount, message, is_anonymous, created_at")
+            .in("campaign_id", ids)
+            .order("created_at", { ascending: false })
+            .limit(100)
+        : Promise.resolve({ data: [] as never[] }),
+      ids.length
+        ? supabase
+            .from("campaign_updates")
+            .select("id, campaign_id, content, created_at")
+            .in("campaign_id", ids)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as never[] }),
+      signPhotos(supabase, [
+        ...rows.map((r) => r.cover_photo),
+        ...rows.map((r) => r.organizer_photo),
+        profile?.profile_photo ?? null,
+      ]),
+    ]);
+
+    const donorCounts = new Map<string, number>();
+    for (const d of donations ?? []) {
+      donorCounts.set(d.campaign_id, (donorCounts.get(d.campaign_id) ?? 0) + 1);
+    }
+    const latest = new Map<string, Campaign["latestUpdate"]>();
+    for (const u of updates ?? []) {
+      if (!latest.has(u.campaign_id)) {
+        latest.set(u.campaign_id, {
+          id: u.id,
+          content: u.content,
+          when: relativeTime(u.created_at),
+        });
+      }
+    }
+
+    return {
+      organizerName: profile?.name || "Organizer",
+      organizerPhoto: resolvePhoto(profile?.profile_photo ?? null, photos),
+      campaigns: rows.map((r) => ({
+        ...toCampaign(r, photos, latest.get(r.id) ?? null),
+        donorCount: donorCounts.get(r.id) ?? 0,
+      })),
+      donations: (donations ?? []).map((d) => ({
+        id: d.id,
+        campaignId: d.campaign_id,
+        campaignTitle: titles.get(d.campaign_id) ?? "Campaign",
+        name: d.is_anonymous || !d.donor_name ? "Anonymous" : d.donor_name,
+        amount: Number(d.amount),
+        message: d.message ?? "",
+        when: relativeTime(d.created_at),
+      })),
       updates: (updates ?? []).map((u) => ({
         id: u.id,
+        campaignId: u.campaign_id,
+        campaignTitle: titles.get(u.campaign_id) ?? "Campaign",
         content: u.content,
         when: relativeTime(u.created_at),
       })),
+      totalRaised: rows.reduce((s, r) => s + Number(r.current_amount), 0),
+      totalGoal: rows.reduce((s, r) => s + Number(r.goal_amount), 0),
     };
   });
 

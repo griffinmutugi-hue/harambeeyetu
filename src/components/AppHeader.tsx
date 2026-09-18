@@ -41,12 +41,20 @@ export function AppHeader({ title, back }: { title?: string; back?: boolean }) {
       {!back && !loading && (
         <div className="flex items-center gap-2">
           {user ? (
-            <button
-              onClick={signOut}
-              className="rounded-full px-2 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
-            >
-              Sign out
-            </button>
+            <>
+              <Link
+                to="/dashboard"
+                className="rounded-full px-2 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Dashboard
+              </Link>
+              <button
+                onClick={signOut}
+                className="rounded-full px-2 py-2 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              >
+                Sign out
+              </button>
+            </>
           ) : (
             <Link
               to="/auth"

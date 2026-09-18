@@ -88,9 +88,27 @@ function CampaignDetail() {
 
       <div className="px-5 pt-5">
         <h1 className="font-display text-2xl font-bold leading-tight">{campaign.title}</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Organized by <span className="font-semibold text-foreground">{campaign.organizer}</span>
-        </p>
+        <div className="mt-2.5 flex items-center gap-2.5">
+          {campaign.organizerPhoto ? (
+            <img
+              src={campaign.organizerPhoto}
+              alt={campaign.organizer}
+              loading="lazy"
+              width={80}
+              height={80}
+              className="h-10 w-10 rounded-full object-cover"
+              suppressHydrationWarning
+            />
+          ) : (
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-display text-sm font-bold text-primary">
+              {campaign.organizer.charAt(0).toUpperCase()}
+            </span>
+          )}
+          <p className="text-sm text-muted-foreground">
+            Organized by{" "}
+            <span className="font-semibold text-foreground">{campaign.organizer}</span>
+          </p>
+        </div>
 
         <div className="mt-5 rounded-2xl border border-border bg-card p-4">
           <div className="flex items-end justify-between">
