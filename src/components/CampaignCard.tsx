@@ -34,8 +34,35 @@ export function CampaignCard({ c }: { c: Campaign }) {
           <h3 className="font-display text-base font-bold leading-snug text-foreground">
             {c.title}
           </h3>
-          <p className="mt-1 text-xs text-muted-foreground">by {c.organizer}</p>
+          <div className="mt-2 flex items-center gap-2">
+            {c.organizerPhoto ? (
+              <img
+                src={c.organizerPhoto}
+                alt={c.organizer}
+                loading="lazy"
+                width={64}
+                height={64}
+                className="h-7 w-7 rounded-full object-cover"
+                suppressHydrationWarning
+              />
+            ) : (
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 font-display text-xs font-bold text-primary">
+                {c.organizer.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <p className="text-xs text-muted-foreground">by {c.organizer}</p>
+          </div>
         </div>
+        {c.latestUpdate && (
+          <div className="rounded-2xl bg-secondary px-3 py-2">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
+              Latest update · {c.latestUpdate.when}
+            </p>
+            <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-foreground/80">
+              {c.latestUpdate.content}
+            </p>
+          </div>
+        )}
         <ProgressBar raised={c.raised} goal={c.goal} />
         <div className="flex items-end justify-between">
           <div>
