@@ -9,6 +9,7 @@ import {
   type Campaign,
   type CampaignDetail,
   type Category,
+  type OrganizerDashboard,
 } from "./campaigns";
 
 const BUCKET = "campaign-photos";
