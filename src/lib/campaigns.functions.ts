@@ -48,22 +48,29 @@ async function signPhotos(
 
 type CampaignRow = Database["public"]["Tables"]["campaigns"]["Row"];
 
-function toCampaign(row: CampaignRow, photo: Record<string, string>): Campaign {
+function resolvePhoto(path: string | null, photo: Record<string, string>): string {
+  if (!path) return "";
+  return path.startsWith("http") ? path : (photo[path] ?? "");
+}
+
+function toCampaign(
+  row: CampaignRow,
+  photo: Record<string, string>,
+  latestUpdate: Campaign["latestUpdate"] = null,
+): Campaign {
   return {
     id: row.id,
     title: row.title,
     organizer: row.organizer_name,
+    organizerPhoto: resolvePhoto(row.organizer_photo, photo),
     story: row.story ?? "",
     category: (row.category ?? "other") as Category,
     goal: Number(row.goal_amount),
     raised: Number(row.current_amount),
     daysLeft: daysUntil(row.deadline),
-    image: row.cover_photo
-      ? row.cover_photo.startsWith("http")
-        ? row.cover_photo
-        : (photo[row.cover_photo] ?? "")
-      : "",
+    image: resolvePhoto(row.cover_photo, photo),
     creatorId: row.creator_id,
+    latestUpdate,
   };
 }
 
