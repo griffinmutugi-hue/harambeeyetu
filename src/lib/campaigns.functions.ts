@@ -153,11 +153,90 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
         amount: Number(d.amount),
         when: relativeTime(d.created_at),
       })),
+      updates: mappedUpdates,
+    };
+  });
+
+export const getOrganizerDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<OrganizerDashboard> => {
+    const { supabase, userId } = context;
+    const [{ data: profile }, { data: campaignRows, error }] = await Promise.all([
+      supabase.from("profiles").select("name, profile_photo").eq("id", userId).maybeSingle(),
+      supabase
+        .from("campaigns")
+        .select("*")
+        .eq("creator_id", userId)
+        .order("created_at", { ascending: false }),
+    ]);
+    if (error) throw new Error(error.message);
+    const rows = campaignRows ?? [];
+    const ids = rows.map((r) => r.id);
+    const titles = new Map(rows.map((r) => [r.id, r.title]));
+
+    const [{ data: donations }, { data: updates }, photos] = await Promise.all([
+      ids.length
+        ? supabase
+            .from("donations")
+            .select("id, campaign_id, donor_name, amount, message, is_anonymous, created_at")
+            .in("campaign_id", ids)
+            .order("created_at", { ascending: false })
+            .limit(100)
+        : Promise.resolve({ data: [] as never[] }),
+      ids.length
+        ? supabase
+            .from("campaign_updates")
+            .select("id, campaign_id, content, created_at")
+            .in("campaign_id", ids)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as never[] }),
+      signPhotos(supabase, [
+        ...rows.map((r) => r.cover_photo),
+        ...rows.map((r) => r.organizer_photo),
+        profile?.profile_photo ?? null,
+      ]),
+    ]);
+
+    const donorCounts = new Map<string, number>();
+    for (const d of donations ?? []) {
+      donorCounts.set(d.campaign_id, (donorCounts.get(d.campaign_id) ?? 0) + 1);
+    }
+    const latest = new Map<string, Campaign["latestUpdate"]>();
+    for (const u of updates ?? []) {
+      if (!latest.has(u.campaign_id)) {
+        latest.set(u.campaign_id, {
+          id: u.id,
+          content: u.content,
+          when: relativeTime(u.created_at),
+        });
+      }
+    }
+
+    return {
+      organizerName: profile?.name || "Organizer",
+      organizerPhoto: resolvePhoto(profile?.profile_photo ?? null, photos),
+      campaigns: rows.map((r) => ({
+        ...toCampaign(r, photos, latest.get(r.id) ?? null),
+        donorCount: donorCounts.get(r.id) ?? 0,
+      })),
+      donations: (donations ?? []).map((d) => ({
+        id: d.id,
+        campaignId: d.campaign_id,
+        campaignTitle: titles.get(d.campaign_id) ?? "Campaign",
+        name: d.is_anonymous || !d.donor_name ? "Anonymous" : d.donor_name,
+        amount: Number(d.amount),
+        message: d.message ?? "",
+        when: relativeTime(d.created_at),
+      })),
       updates: (updates ?? []).map((u) => ({
         id: u.id,
+        campaignId: u.campaign_id,
+        campaignTitle: titles.get(u.campaign_id) ?? "Campaign",
         content: u.content,
         when: relativeTime(u.created_at),
       })),
+      totalRaised: rows.reduce((s, r) => s + Number(r.current_amount), 0),
+      totalGoal: rows.reduce((s, r) => s + Number(r.goal_amount), 0),
     };
   });
 
