@@ -8,6 +8,7 @@ export type Campaign = {
   id: string;
   title: string;
   organizer: string;
+  organizerPhoto: string;
   story: string;
   category: Category;
   goal: number;
@@ -15,6 +16,32 @@ export type Campaign = {
   daysLeft: number;
   image: string;
   creatorId: string | null;
+  latestUpdate: CampaignUpdate | null;
+};
+
+export type DashboardDonation = {
+  id: string;
+  campaignId: string;
+  campaignTitle: string;
+  name: string;
+  amount: number;
+  message: string;
+  when: string;
+};
+
+export type DashboardUpdate = CampaignUpdate & {
+  campaignId: string;
+  campaignTitle: string;
+};
+
+export type OrganizerDashboard = {
+  organizerName: string;
+  organizerPhoto: string;
+  campaigns: (Campaign & { donorCount: number })[];
+  donations: DashboardDonation[];
+  updates: DashboardUpdate[];
+  totalRaised: number;
+  totalGoal: number;
 };
 
 export type CampaignDetail = Campaign & {
