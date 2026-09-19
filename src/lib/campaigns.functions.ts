@@ -127,7 +127,7 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
 
     const [{ data: donations }, { data: updates }, photos] = await Promise.all([
       client
-        .from("donations")
+        .from("donation_feed")
         .select("id, donor_name, amount, is_anonymous, created_at")
         .eq("campaign_id", data.id)
         .order("created_at", { ascending: false })
@@ -178,7 +178,7 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
     const [{ data: donations }, { data: updates }, photos] = await Promise.all([
       ids.length
         ? supabase
-            .from("donations")
+            .from("donation_feed")
             .select("id, campaign_id, donor_name, amount, message, is_anonymous, created_at")
             .in("campaign_id", ids)
             .order("created_at", { ascending: false })
@@ -322,10 +322,10 @@ export const submitDonation = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    const client = publicClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const reference =
       "DEMO-" + Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString().slice(-4);
-    const { error } = await client.rpc("record_donation", {
+    const { error } = await supabaseAdmin.rpc("record_donation", {
       _campaign_id: data.campaignId,
       _amount: data.amount,
       _donor_name: data.donorName || undefined,
