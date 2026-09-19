@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
-import { categoryLabel, formatKES, type Category } from "@/lib/campaigns";
+import { categoryLabel, formatKES, type CampaignDetail as CampaignDetailData, type Category } from "@/lib/campaigns";
 import { getCampaignDetail, postCampaignUpdate, submitDonation } from "@/lib/campaigns.functions";
 import { Check, MessageCircle, Share2, X } from "lucide-react";
 
