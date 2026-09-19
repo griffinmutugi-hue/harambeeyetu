@@ -19,7 +19,7 @@ const detailQuery = (id: string) =>
 
 export const Route = createFileRoute("/campaign/$id")({
   head: ({ loaderData }) => {
-    const c = loaderData ?? null;
+    const c = (loaderData ?? null) as CampaignDetailData | null;
     const title = c ? `${c.title} — Harambee` : "Campaign — Harambee";
     const description = c
       ? `${formatKES(c.raised)} raised of ${formatKES(c.goal)} — read the story and support this harambee with M-Pesa.`

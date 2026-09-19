@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppHeader } from "@/components/AppHeader";
 import { getCampaignDetail } from "@/lib/campaigns.functions";
+import type { CampaignDetail } from "@/lib/campaigns";
 import { Check, Copy, MessageCircle } from "lucide-react";
 import { useState } from "react";
 
