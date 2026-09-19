@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
-import { categoryLabel, formatKES, type Category } from "@/lib/campaigns";
+import { categoryLabel, formatKES, type CampaignDetail as CampaignDetailData, type Category } from "@/lib/campaigns";
 import { getCampaignDetail, postCampaignUpdate, submitDonation } from "@/lib/campaigns.functions";
 import { Check, MessageCircle, Share2, X } from "lucide-react";
 
@@ -18,14 +18,32 @@ const detailQuery = (id: string) =>
   });
 
 export const Route = createFileRoute("/campaign/$id")({
-  head: () => ({
-    meta: [
-      { title: "Campaign — Harambee" },
-      { name: "description", content: "Read the story, see the progress and support this harambee with M-Pesa." },
-      { property: "og:title", content: "Campaign — Harambee" },
-      { property: "og:description", content: "Read the story, see the progress and support this harambee with M-Pesa." },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const c = (loaderData ?? null) as CampaignDetailData | null;
+    const title = c ? `${c.title} — Harambee` : "Campaign — Harambee";
+    const description = c
+      ? `${formatKES(c.raised)} raised of ${formatKES(c.goal)} — read the story and support this harambee with M-Pesa.`
+      : "Read the story, see the progress and support this harambee with M-Pesa.";
+    const image = c?.image && c.image.startsWith("https://") ? c.image : null;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        ...(image
+          ? [
+              { property: "og:image", content: image },
+              { name: "twitter:image", content: image },
+            ]
+          : []),
+      ],
+    };
+  },
   loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: CampaignDetail,
   errorComponent: () => (
