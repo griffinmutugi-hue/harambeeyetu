@@ -14,7 +14,7 @@ const detailQuery = (id: string) =>
 
 export const Route = createFileRoute("/share/$id")({
   head: ({ loaderData }) => {
-    const c = loaderData ?? null;
+    const c = (loaderData ?? null) as CampaignDetail | null;
     const title = c ? `Share "${c.title}" — Harambee` : "Share your Harambee";
     const description = c
       ? `Rally your people around "${c.title}" — every shilling counts.`
