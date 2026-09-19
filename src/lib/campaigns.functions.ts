@@ -152,7 +152,7 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
       donors: (donations ?? []).map((d) => ({
         name: d.is_anonymous || !d.donor_name ? "Anonymous" : d.donor_name,
         amount: Number(d.amount),
-        when: relativeTime(d.created_at),
+        when: relativeTime(d.created_at ?? ""),
       })),
       updates: mappedUpdates,
     };
@@ -200,6 +200,7 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
 
     const donorCounts = new Map<string, number>();
     for (const d of donations ?? []) {
+      if (!d.campaign_id) continue;
       donorCounts.set(d.campaign_id, (donorCounts.get(d.campaign_id) ?? 0) + 1);
     }
     const latest = new Map<string, Campaign["latestUpdate"]>();
@@ -221,13 +222,13 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
         donorCount: donorCounts.get(r.id) ?? 0,
       })),
       donations: (donations ?? []).map((d) => ({
-        id: d.id,
-        campaignId: d.campaign_id,
-        campaignTitle: titles.get(d.campaign_id) ?? "Campaign",
+        id: d.id ?? "",
+        campaignId: d.campaign_id ?? "",
+        campaignTitle: titles.get(d.campaign_id ?? "") ?? "Campaign",
         name: d.is_anonymous || !d.donor_name ? "Anonymous" : d.donor_name,
         amount: Number(d.amount),
         message: d.message ?? "",
-        when: relativeTime(d.created_at),
+        when: relativeTime(d.created_at ?? ""),
       })),
       updates: (updates ?? []).map((u) => ({
         id: u.id,
