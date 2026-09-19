@@ -18,14 +18,30 @@ const detailQuery = (id: string) =>
   });
 
 export const Route = createFileRoute("/campaign/$id")({
-  head: () => ({
-    meta: [
-      { title: "Campaign — Harambee" },
-      { name: "description", content: "Read the story, see the progress and support this harambee with M-Pesa." },
-      { property: "og:title", content: "Campaign — Harambee" },
-      { property: "og:description", content: "Read the story, see the progress and support this harambee with M-Pesa." },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const c = loaderData ?? null;
+    const title = c ? `${c.title} — Harambee` : "Campaign — Harambee";
+    const description = c
+      ? `${formatKES(c.raised)} raised of ${formatKES(c.goal)} — read the story and support this harambee with M-Pesa.`
+      : "Read the story, see the progress and support this harambee with M-Pesa.";
+    const image = c?.image && c.image.startsWith("https://") ? c.image : null;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        ...(image
+          ? [
+              { property: "og:image", content: image },
+              { name: "twitter:image", content: image },
+            ]
+          : []),
+      ],
+    };
+  },
   loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: CampaignDetail,
   errorComponent: () => (

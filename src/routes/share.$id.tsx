@@ -12,14 +12,30 @@ const detailQuery = (id: string) =>
   });
 
 export const Route = createFileRoute("/share/$id")({
-  head: () => ({
-    meta: [
-      { title: "Share your Harambee" },
-      { name: "description", content: "Share your campaign link on WhatsApp and rally your people." },
-      { property: "og:title", content: "Share your Harambee" },
-      { property: "og:description", content: "Share your campaign link on WhatsApp and rally your people." },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const c = loaderData ?? null;
+    const title = c ? `Share "${c.title}" — Harambee` : "Share your Harambee";
+    const description = c
+      ? `Rally your people around "${c.title}" — every shilling counts.`
+      : "Share your campaign link on WhatsApp and rally your people.";
+    const image = c?.image && c.image.startsWith("https://") ? c.image : null;
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
+        ...(image
+          ? [
+              { property: "og:image", content: image },
+              { name: "twitter:image", content: image },
+            ]
+          : []),
+      ],
+    };
+  },
   loader: ({ context, params }) => context.queryClient.ensureQueryData(detailQuery(params.id)),
   component: ShareScreen,
   errorComponent: () => (
