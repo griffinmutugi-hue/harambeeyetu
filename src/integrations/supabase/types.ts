@@ -189,7 +189,44 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      donation_feed: {
+        Row: {
+          amount: number | null
+          campaign_id: string | null
+          created_at: string | null
+          donor_name: string | null
+          id: string | null
+          is_anonymous: boolean | null
+          message: string | null
+        }
+        Insert: {
+          amount?: number | null
+          campaign_id?: string | null
+          created_at?: string | null
+          donor_name?: never
+          id?: string | null
+          is_anonymous?: boolean | null
+          message?: string | null
+        }
+        Update: {
+          amount?: number | null
+          campaign_id?: string | null
+          created_at?: string | null
+          donor_name?: never
+          id?: string | null
+          is_anonymous?: boolean | null
+          message?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       record_donation: {
