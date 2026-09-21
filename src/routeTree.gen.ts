@@ -16,6 +16,7 @@ import { Route as ShareIdRouteImport } from './routes/share.$id'
 import { Route as CampaignIdRouteImport } from './routes/campaign.$id'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCreateRouteImport } from './routes/_authenticated/create'
+import { Route as ApiPublicCampaignImageIdRouteImport } from './routes/api/public/campaign-image.$id'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -51,6 +52,12 @@ const AuthenticatedCreateRoute = AuthenticatedCreateRouteImport.update({
   path: '/create',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicCampaignImageIdRoute =
+  ApiPublicCampaignImageIdRouteImport.update({
+    id: '/api/public/campaign-image/$id',
+    path: '/api/public/campaign-image/$id',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/campaign/$id': typeof CampaignIdRoute
   '/share/$id': typeof ShareIdRoute
+  '/api/public/campaign-image/$id': typeof ApiPublicCampaignImageIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +75,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/campaign/$id': typeof CampaignIdRoute
   '/share/$id': typeof ShareIdRoute
+  '/api/public/campaign-image/$id': typeof ApiPublicCampaignImageIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,6 +86,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/campaign/$id': typeof CampaignIdRoute
   '/share/$id': typeof ShareIdRoute
+  '/api/public/campaign-image/$id': typeof ApiPublicCampaignImageIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,8 +97,16 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/campaign/$id'
     | '/share/$id'
+    | '/api/public/campaign-image/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/create' | '/dashboard' | '/campaign/$id' | '/share/$id'
+  to:
+    | '/'
+    | '/auth'
+    | '/create'
+    | '/dashboard'
+    | '/campaign/$id'
+    | '/share/$id'
+    | '/api/public/campaign-image/$id'
   id:
     | '__root__'
     | '/'
@@ -98,6 +116,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/campaign/$id'
     | '/share/$id'
+    | '/api/public/campaign-image/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -106,6 +125,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CampaignIdRoute: typeof CampaignIdRoute
   ShareIdRoute: typeof ShareIdRoute
+  ApiPublicCampaignImageIdRoute: typeof ApiPublicCampaignImageIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -159,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCreateRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/campaign-image/$id': {
+      id: '/api/public/campaign-image/$id'
+      path: '/api/public/campaign-image/$id'
+      fullPath: '/api/public/campaign-image/$id'
+      preLoaderRoute: typeof ApiPublicCampaignImageIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -181,6 +208,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CampaignIdRoute: CampaignIdRoute,
   ShareIdRoute: ShareIdRoute,
+  ApiPublicCampaignImageIdRoute: ApiPublicCampaignImageIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
