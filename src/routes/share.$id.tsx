@@ -19,7 +19,9 @@ export const Route = createFileRoute("/share/$id")({
     const description = c
       ? `Rally your people around "${c.title}" — every shilling counts.`
       : "Share your campaign link on WhatsApp and rally your people.";
-    const image = c?.image && c.image.startsWith("https://") ? c.image : null;
+    const image = c?.image
+      ? `https://harambeeyetu.lovable.app/api/public/campaign-image/${c.id}`
+      : null;
     return {
       meta: [
         { title },
@@ -33,6 +35,11 @@ export const Route = createFileRoute("/share/$id")({
         ...(image
           ? [
               { property: "og:image", content: image },
+              { property: "og:image:secure_url", content: image },
+              { property: "og:image:type", content: "image/jpeg" },
+              { property: "og:image:width", content: "1024" },
+              { property: "og:image:height", content: "768" },
+              { property: "og:image:alt", content: c?.title ?? "Harambee campaign" },
               { name: "twitter:image", content: image },
             ]
           : []),
