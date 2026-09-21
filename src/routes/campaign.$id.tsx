@@ -24,7 +24,9 @@ export const Route = createFileRoute("/campaign/$id")({
     const description = c
       ? `${formatKES(c.raised)} raised of ${formatKES(c.goal)} — read the story and support this harambee with M-Pesa.`
       : "Read the story, see the progress and support this harambee with M-Pesa.";
-    const image = c?.image && c.image.startsWith("https://") ? c.image : null;
+    const image = c?.image
+      ? `https://harambeeyetu.lovable.app/api/public/campaign-image/${c.id}`
+      : null;
     return {
       meta: [
         { title },
@@ -38,6 +40,11 @@ export const Route = createFileRoute("/campaign/$id")({
         ...(image
           ? [
               { property: "og:image", content: image },
+              { property: "og:image:secure_url", content: image },
+              { property: "og:image:type", content: "image/jpeg" },
+              { property: "og:image:width", content: "1024" },
+              { property: "og:image:height", content: "768" },
+              { property: "og:image:alt", content: c?.title ?? "Harambee campaign" },
               { name: "twitter:image", content: image },
             ]
           : []),
