@@ -1,11 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { formatKES } from "@/lib/campaigns";
-import { getOrganizerDashboard } from "@/lib/campaigns.functions";
-import { Plus } from "lucide-react";
+import { closeCampaign, extendCampaign, getOrganizerDashboard } from "@/lib/campaigns.functions";
+import type { Campaign } from "@/lib/campaigns";
+import { Plus, CalendarPlus, CircleCheck } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -86,33 +89,11 @@ function Dashboard() {
 
             <h2 className="mt-8 font-display text-base font-bold">Your campaigns</h2>
             <div className="mt-3 space-y-3">
-              {data.campaigns.map((c) => (
-                <Link
-                  key={c.id}
-                  to="/campaign/$id"
-                  params={{ id: c.id }}
-                  className="block rounded-2xl border border-border bg-card p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="font-display text-sm font-bold leading-snug">{c.title}</p>
-                    <span className="whitespace-nowrap rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground">
-                      {c.daysLeft}d left
-                    </span>
-                  </div>
-                  <div className="mt-3">
-                    <ProgressBar raised={c.raised} goal={c.goal} />
-                  </div>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>
-                      <b className="text-primary">{formatKES(c.raised)}</b> of {formatKES(c.goal)}
-                    </span>
-                    <span>
-                      <b className="text-foreground">{c.donorCount}</b> donors
-                    </span>
-                  </div>
-                </Link>
-              ))}
-              {data.campaigns.length === 0 && (
+               {data.campaigns.map((c) => (
+                 <CampaignRow key={c.id} campaign={c} />
+               ))}
+               {data.campaigns.length === 0 && (
+@@
                 <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center">
                   <p className="text-sm text-muted-foreground">You haven't started a harambee yet.</p>
                   <Link

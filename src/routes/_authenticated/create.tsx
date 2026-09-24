@@ -4,7 +4,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { type Category } from "@/lib/campaigns";
 import { createCampaign } from "@/lib/campaigns.functions";
 import { supabase } from "@/integrations/supabase/client";
-import { Upload, Heart, GraduationCap, Users, Sparkles } from "lucide-react";
+import { Upload, Heart, GraduationCap, Users, Sparkles, CalendarDays, Infinity } from "lucide-react";
 import { useRef, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/create")({
@@ -26,6 +26,14 @@ const categories: { id: Category; label: string; icon: React.ReactNode }[] = [
   { id: "other", label: "Other", icon: <Sparkles className="h-4 w-4" /> },
 ];
 
+type Duration = "30" | "60" | "90" | "custom" | "none";
+
+function addDays(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 function CreateCampaign() {
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -36,6 +44,8 @@ function CreateCampaign() {
   const [story, setStory] = useState("");
   const [goal, setGoal] = useState<number>(50000);
   const [category, setCategory] = useState<Category>("community");
+  const [duration, setDuration] = useState<Duration>("30");
+  const [customDeadline, setCustomDeadline] = useState(addDays(30));
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState(false);
@@ -74,6 +84,12 @@ function CreateCampaign() {
           category,
           coverPhoto: path,
           organizerName: organizer.trim(),
+          deadline:
+            duration === "none"
+              ? null
+              : duration === "custom"
+                ? customDeadline
+                : addDays(Number(duration)),
         },
       });
       navigate({ to: "/share/$id", params: { id: result.id } });
@@ -117,6 +133,65 @@ function CreateCampaign() {
             className="hidden"
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
+        </div>
+
+        <div>
+          <label className="text-xs font-semibold text-muted-foreground">Campaign duration</label>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {(["30", "60", "90"] as const).map((days) => (
+              <button
+                key={days}
+                type="button"
+                onClick={() => setDuration(days)}
+                className={
+                  "rounded-xl border px-2 py-3 text-sm font-semibold transition " +
+                  (duration === days
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-border bg-card text-foreground")
+                }
+              >
+                {days} days
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setDuration("custom")}
+              className={
+                "col-span-2 flex items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold transition " +
+                (duration === "custom"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground")
+              }
+            >
+              <CalendarDays className="h-4 w-4" /> Custom date
+            </button>
+            <button
+              type="button"
+              onClick={() => setDuration("none")}
+              className={
+                "flex items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-sm font-semibold transition " +
+                (duration === "none"
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground")
+              }
+            >
+              <Infinity className="h-4 w-4" /> No deadline
+            </button>
+          </div>
+          {duration === "custom" && (
+            <input
+              type="date"
+              min={addDays(1)}
+              value={customDeadline}
+              onChange={(e) => setCustomDeadline(e.target.value)}
+              className="input mt-2"
+            />
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">
+            {duration === "none"
+              ? "This campaign runs until you close it."
+              : "30 days is selected by default. You can extend an expired campaign within 48 hours."}
+          </p>
         </div>
 
         <Field label="Campaign title">
