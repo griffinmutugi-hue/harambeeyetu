@@ -148,7 +148,13 @@ function CampaignDetail() {
           </div>
           <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
             <span><b className="text-foreground">{campaign.donorCount}</b> donors</span>
-            <span><b className="text-foreground">{campaign.daysLeft}</b> days left</span>
+             <span>
+               {campaign.deadline ? (
+                 <><b className="text-foreground">{campaign.daysLeft}</b> days left</>
+               ) : (
+                 <b className="text-foreground">No deadline</b>
+               )}
+             </span>
           </div>
         </div>
 
@@ -214,13 +220,19 @@ function CampaignDetail() {
         </button>
       </div>
 
-      <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/95 px-5 py-4 backdrop-blur-md">
-        <button
-          onClick={() => setOpen(true)}
-          className="w-full rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground transition-transform active:scale-[0.98]"
-        >
-          Donate Now
-        </button>
+       <div className="fixed bottom-0 left-1/2 z-30 w-full max-w-[480px] -translate-x-1/2 border-t border-border/60 bg-background/95 px-5 py-4 backdrop-blur-md">
+         {campaign.isAcceptingDonations ? (
+           <button
+             onClick={() => setOpen(true)}
+             className="w-full rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground transition-transform active:scale-[0.98]"
+           >
+             Donate Now
+           </button>
+         ) : (
+           <div className="rounded-full bg-secondary py-4 text-center font-display text-base font-bold text-secondary-foreground">
+             Campaign ended
+           </div>
+         )}
       </div>
 
       {open && (
