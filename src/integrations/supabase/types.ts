@@ -56,6 +56,7 @@ export type Database = {
       campaigns: {
         Row: {
           category: string
+          completed_at: string | null
           cover_photo: string | null
           created_at: string
           creator_id: string | null
@@ -71,6 +72,7 @@ export type Database = {
         }
         Insert: {
           category?: string
+          completed_at?: string | null
           cover_photo?: string | null
           created_at?: string
           creator_id?: string | null
@@ -86,6 +88,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          completed_at?: string | null
           cover_photo?: string | null
           created_at?: string
           creator_id?: string | null
