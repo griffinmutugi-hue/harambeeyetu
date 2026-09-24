@@ -17,6 +17,7 @@
 
 2. **Update public campaign visibility**
    - Discovery will return only active campaigns whose deadlines have not passed.
+   - Campaigns created with no deadline remain active in discovery until the organizer closes them.
    - Expired and completed campaigns will remain accessible through their direct campaign links.
    - The campaign page will replace the donation action with a clear `Campaign ended` state and retain its story, amount raised, donors, and updates.
    - Completed campaign links and campaign-specific share images will continue working.
@@ -29,20 +30,29 @@
    - Once 48 hours pass, disable extension and show the campaign as completed.
    - Protect both actions so only the campaign owner can use them.
 
-4. **Keep totals and dashboard history intact**
+4. **Add campaign duration choices during setup**
+   - Replace the current fixed 30-day behavior with a visible duration choice on the campaign creation form.
+   - Offer practical durations, with **30 days** selected by default, plus a custom end date and **No deadline**.
+   - Validate custom dates so they are in the future.
+   - Show `No deadline` instead of a days-left counter throughout discovery, campaign details, and the dashboard.
+   - Allow organizers to close a no-deadline campaign from the dashboard; the 48-hour expiry window does not apply to these campaigns.
+
+5. **Keep totals and dashboard history intact**
    - Completed campaigns remain visible in the organizer dashboard.
    - Existing donations and updates remain unchanged.
    - Dashboard totals continue including completed campaigns and their collected amounts.
 
-5. **Verify the complete lifecycle**
+6. **Verify the complete lifecycle**
    - Test a deadline-passed campaign as a visitor: absent from discovery, direct link available, donations blocked.
    - Test as its organizer: extend within 48 hours, then verify discovery and donations reopen.
    - Test manual closure and a campaign beyond the 48-hour window.
+   - Test the 30-day default, a custom end date, and a no-deadline campaign from creation through discovery and dashboard closure.
    - Confirm mobile layouts, metadata, and existing active campaigns still behave normally.
 
 ## Technical details
 
 - Use additive database changes and owner-checked server actions.
 - Use `Africa/Nairobi` as the deadline timezone; a campaign accepts donations through 11:59:59 PM on its selected deadline date.
+- Store no-deadline campaigns with a null deadline; the existing database already permits this.
 - Enforce expiry independently in discovery queries, detail responses, and the donation transaction to prevent stale-page or direct-call bypasses.
 - Because no scheduler extension is enabled, completion is time-derived immediately and the stored status is reconciled on the next campaign read; no visitor can donate or see it in discovery during that interval.
