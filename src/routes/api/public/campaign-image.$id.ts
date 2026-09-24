@@ -32,7 +32,6 @@ export const Route = createFileRoute("/api/public/campaign-image/$id")({
           .from("campaigns")
           .select("cover_photo")
           .eq("id", parsed.data)
-          .eq("status", "active")
           .maybeSingle();
 
         const path = campaign?.cover_photo;

@@ -14,6 +14,12 @@ export type Campaign = {
   goal: number;
   raised: number;
   daysLeft: number;
+  deadline: string | null;
+  status: "active" | "completed" | "cancelled";
+  isExpired: boolean;
+  isAcceptingDonations: boolean;
+  decisionDeadline: string | null;
+  canExtend: boolean;
   image: string;
   creatorId: string | null;
   latestUpdate: CampaignUpdate | null;
@@ -62,9 +68,28 @@ export function formatKES(n: number) {
 }
 
 export function daysUntil(deadline: string | null): number {
-  if (!deadline) return 30;
-  const diff = new Date(deadline + "T23:59:59Z").getTime() - Date.now();
+  if (!deadline) return 0;
+  const diff = deadlineEnd(deadline).getTime() - Date.now();
   return Math.max(0, Math.ceil(diff / 86_400_000));
+}
+
+export function deadlineEnd(deadline: string): Date {
+  return new Date(`${deadline}T20:59:59.999Z`);
+}
+
+export function campaignLifecycle(deadline: string | null, status: string) {
+  const end = deadline ? deadlineEnd(deadline) : null;
+  const expired = status === "active" && !!end && Date.now() > end.getTime();
+  const decisionDeadline = expired
+    ? new Date(end.getTime() + 48 * 60 * 60 * 1000).toISOString()
+    : null;
+  const canExtend = expired && !!decisionDeadline && Date.now() <= new Date(decisionDeadline).getTime();
+  return {
+    isExpired: expired,
+    isAcceptingDonations: status === "active" && !expired,
+    decisionDeadline,
+    canExtend,
+  };
 }
 
 export function relativeTime(iso: string): string {

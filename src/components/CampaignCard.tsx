@@ -26,7 +26,7 @@ export function CampaignCard({ c }: { c: Campaign }) {
           {categoryLabel[c.category]}
         </div>
         <div className="absolute right-3 top-3 chip bg-flag-black/80 text-cream backdrop-blur">
-          <Clock className="h-3 w-3" /> {c.daysLeft}d left
+          <Clock className="h-3 w-3" /> {c.deadline ? `${c.daysLeft}d left` : "No deadline"}
         </div>
       </div>
       <div className="space-y-3 p-4">

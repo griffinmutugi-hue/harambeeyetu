@@ -5,6 +5,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   daysUntil,
+  campaignLifecycle,
   relativeTime,
   type Campaign,
   type CampaignDetail,
@@ -59,6 +60,7 @@ function toCampaign(
   photo: Record<string, string>,
   latestUpdate: Campaign["latestUpdate"] = null,
 ): Campaign {
+  const lifecycle = campaignLifecycle(row.deadline, row.status);
   return {
     id: row.id,
     title: row.title,
@@ -69,19 +71,58 @@ function toCampaign(
     goal: Number(row.goal_amount),
     raised: Number(row.current_amount),
     daysLeft: daysUntil(row.deadline),
+    deadline: row.deadline,
+    status: row.status as Campaign["status"],
+    ...lifecycle,
     image: resolvePhoto(row.cover_photo, photo),
     creatorId: row.creator_id,
     latestUpdate,
   };
 }
 
+function nairobiToday(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Nairobi",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+async function reconcileCompletedCampaigns(creatorId?: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  let query = supabaseAdmin
+    .from("campaigns")
+    .select("id, deadline")
+    .eq("status", "active")
+    .not("deadline", "is", null);
+  if (creatorId) query = query.eq("creator_id", creatorId);
+  const { data: rows } = await query;
+  const ids = (rows ?? [])
+    .filter((row) => {
+      if (!row.deadline) return false;
+      const decisionEnd = new Date(`${row.deadline}T20:59:59.999Z`).getTime() + 48 * 60 * 60 * 1000;
+      return Date.now() > decisionEnd;
+    })
+    .map((row) => row.id);
+  if (ids.length) {
+    await supabaseAdmin
+      .from("campaigns")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .in("id", ids)
+      .eq("status", "active");
+  }
+}
+
 export const listActiveCampaigns = createServerFn({ method: "GET" }).handler(
   async (): Promise<Campaign[]> => {
+    await reconcileCompletedCampaigns();
     const client = publicClient();
     const { data, error } = await client
       .from("campaigns")
       .select("*")
       .eq("status", "active")
+      .or(`deadline.is.null,deadline.gte.${nairobiToday()}`)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const rows = data ?? [];
@@ -116,6 +157,7 @@ export const listActiveCampaigns = createServerFn({ method: "GET" }).handler(
 export const getCampaignDetail = createServerFn({ method: "GET" })
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
   .handler(async ({ data }): Promise<CampaignDetail | null> => {
+    await reconcileCompletedCampaigns();
     const client = publicClient();
     const { data: row, error } = await client
       .from("campaigns")
@@ -162,6 +204,7 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<OrganizerDashboard> => {
     const { supabase, userId } = context;
+    await reconcileCompletedCampaigns(userId);
     const [{ data: profile }, { data: campaignRows, error }] = await Promise.all([
       supabase.from("profiles").select("name, profile_photo").eq("id", userId).maybeSingle(),
       supabase
@@ -253,7 +296,7 @@ export const createCampaign = createServerFn({ method: "POST" })
         category: z.enum(["medical", "education", "community", "other"]),
         coverPhoto: z.string().trim().min(1),
         organizerName: z.string().trim().max(80).optional().default(""),
-        deadlineDays: z.number().int().min(1).max(365).optional().default(30),
+        deadline: z.string().date().nullable().optional().default(null),
       })
       .parse(input),
   )
@@ -271,9 +314,9 @@ export const createCampaign = createServerFn({ method: "POST" })
       profile?.email?.split("@")[0] ||
       "Anonymous Organizer";
 
-    const deadline = new Date(Date.now() + data.deadlineDays * 86_400_000)
-      .toISOString()
-      .slice(0, 10);
+    if (data.deadline && data.deadline <= nairobiToday()) {
+      throw new Error("Choose a future campaign deadline.");
+    }
 
     const { data: row, error } = await supabase
       .from("campaigns")
@@ -285,12 +328,51 @@ export const createCampaign = createServerFn({ method: "POST" })
         goal_amount: data.goalAmount,
         category: data.category,
         cover_photo: data.coverPhoto,
-        deadline,
+        deadline: data.deadline,
       })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
     return { id: row.id };
+  });
+
+export const extendCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ campaignId: z.string().uuid(), deadline: z.string().date() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    if (data.deadline <= nairobiToday()) throw new Error("Choose a future campaign deadline.");
+    const { data: campaign, error: readError } = await context.supabase
+      .from("campaigns")
+      .select("deadline, status")
+      .eq("id", data.campaignId)
+      .eq("creator_id", context.userId)
+      .maybeSingle();
+    if (readError || !campaign) throw new Error("Campaign not found.");
+    const lifecycle = campaignLifecycle(campaign.deadline, campaign.status);
+    if (!lifecycle.canExtend) throw new Error("The 48-hour extension window has ended.");
+    const { error } = await context.supabase
+      .from("campaigns")
+      .update({ deadline: data.deadline, status: "active", completed_at: null })
+      .eq("id", data.campaignId)
+      .eq("creator_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const closeCampaign = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ campaignId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("campaigns")
+      .update({ status: "completed", completed_at: new Date().toISOString() })
+      .eq("id", data.campaignId)
+      .eq("creator_id", context.userId)
+      .eq("status", "active");
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const postCampaignUpdate = createServerFn({ method: "POST" })
