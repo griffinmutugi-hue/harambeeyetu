@@ -93,7 +93,6 @@ function Dashboard() {
                  <CampaignRow key={c.id} campaign={c} />
                ))}
                {data.campaigns.length === 0 && (
-@@
                 <div className="rounded-2xl border border-dashed border-border px-4 py-8 text-center">
                   <p className="text-sm text-muted-foreground">You haven't started a harambee yet.</p>
                   <Link
@@ -149,6 +148,95 @@ function Dashboard() {
           </>
         )}
       </section>
+    </div>
+  );
+}
+
+function CampaignRow({ campaign: c }: { campaign: Campaign & { donorCount: number } }) {
+  const extend = useServerFn(extendCampaign);
+  const close = useServerFn(closeCampaign);
+  const qc = useQueryClient();
+  const [date, setDate] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const run = async (fn: () => Promise<unknown>, msg: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      await qc.invalidateQueries();
+      toast.success(msg);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Something went wrong.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hoursLeft = c.decisionDeadline
+    ? Math.max(0, Math.ceil((new Date(c.decisionDeadline).getTime() - Date.now()) / 3_600_000))
+    : 0;
+  const status =
+    c.status === "completed"
+      ? "Completed"
+      : c.isExpired
+        ? "Expired"
+        : c.deadline
+          ? `${c.daysLeft} days left`
+          : "No deadline";
+
+  return (
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <Link to="/campaign/$id" params={{ id: c.id }} className="text-sm font-semibold leading-snug">
+          {c.title}
+        </Link>
+        <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-secondary-foreground">
+          {status}
+        </span>
+      </div>
+      <div className="mt-3">
+        <ProgressBar raised={c.raised} goal={c.goal} />
+      </div>
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        {formatKES(c.raised)} of {formatKES(c.goal)} · {c.donorCount} donors
+      </p>
+
+      {c.canExtend && (
+        <div className="mt-3 rounded-xl bg-secondary/60 p-3">
+          <p className="text-xs text-foreground">
+            This campaign ended. You have about <b>{hoursLeft}h</b> to extend it or close it.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="flex-1 rounded-lg border border-input bg-background px-3 py-2 text-xs"
+            />
+            <button
+              disabled={busy || !date}
+              onClick={() => run(() => extend({ data: { campaignId: c.id, deadline: date } }), "Campaign extended.")}
+              className="inline-flex items-center gap-1 rounded-full bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" /> Extend
+            </button>
+          </div>
+        </div>
+      )}
+
+      {c.status === "active" && (
+        <button
+          disabled={busy}
+          onClick={() => {
+            if (confirm("Close this campaign? It will stop accepting donations.")) {
+              run(() => close({ data: { campaignId: c.id } }), "Campaign closed.");
+            }
+          }}
+          className="mt-3 inline-flex items-center gap-1 rounded-full border border-border px-3 py-2 text-xs font-semibold disabled:opacity-50"
+        >
+          <CircleCheck className="h-3.5 w-3.5" /> Close campaign
+        </button>
+      )}
     </div>
   );
 }
