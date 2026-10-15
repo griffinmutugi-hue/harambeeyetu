@@ -419,3 +419,89 @@ export const submitDonation = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, reference };
   });
+
+export const startDonation = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        campaignId: z.string().uuid(),
+        amount: z.number().int().min(1).max(250_000),
+        phone: z.string().trim().min(9).max(20),
+        donorName: z.string().trim().max(60).optional().default(""),
+        message: z.string().trim().max(500).optional().default(""),
+        isAnonymous: z.boolean().optional().default(false),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { normalizePhone, stkPush } = await import("@/lib/mpesa.server");
+    const phone = normalizePhone(data.phone);
+    if (!phone) throw new Error("Enter a valid Safaricom number, e.g. 0712 345 678.");
+
+    const { data: c } = await supabaseAdmin
+      .from("campaigns")
+      .select("id, status, deadline")
+      .eq("id", data.campaignId)
+      .maybeSingle();
+    const today = new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+    if (!c || c.status !== "active" || (c.deadline && c.deadline < today)) {
+      throw new Error("This campaign is no longer accepting donations.");
+    }
+
+    const push = await stkPush({
+      phone,
+      amount: data.amount,
+      reference: "Harambee",
+      description: "Donation",
+    });
+    const anonymous = data.isAnonymous || !data.donorName;
+    const { data: row, error } = await supabaseAdmin
+      .from("payment_requests")
+      .insert({
+        campaign_id: data.campaignId,
+        phone,
+        amount: data.amount,
+        donor_name: anonymous ? null : data.donorName,
+        message: data.message || null,
+        is_anonymous: anonymous,
+        checkout_request_id: push.checkoutRequestId,
+        merchant_request_id: push.merchantRequestId,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error("Couldn't start the payment. Please try again.");
+    return { requestId: row.id };
+  });
+
+export const getDonationStatus = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ requestId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { stkQuery, settlePayment } = await import("@/lib/mpesa.server");
+    const load = () =>
+      supabaseAdmin
+        .from("payment_requests")
+        .select("status, result_desc, mpesa_receipt, checkout_request_id, created_at")
+        .eq("id", data.requestId)
+        .maybeSingle();
+    let { data: r } = await load();
+    if (!r) throw new Error("Payment not found.");
+    // Fallback if Safaricom's callback is slow: ask Daraja directly after 20s.
+    if (r.status === "pending" && r.checkout_request_id && Date.now() - new Date(r.created_at).getTime() > 20_000) {
+      try {
+        const q = await stkQuery(r.checkout_request_id);
+        if (q) {
+          await settlePayment(supabaseAdmin, r.checkout_request_id, { ...q, receipt: null });
+          r = (await load()).data ?? r;
+        }
+      } catch (e) {
+        console.error("STK query failed", e);
+      }
+    }
+    return {
+      status: r.status as "pending" | "success" | "failed",
+      message: r.result_desc ?? null,
+      receipt: r.mpesa_receipt ?? null,
+    };
+  });
