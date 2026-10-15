@@ -18,6 +18,7 @@ export type Campaign = {
   status: "active" | "completed" | "cancelled";
   isExpired: boolean;
   isAcceptingDonations: boolean;
+  payoutName: string | null;
   decisionDeadline: string | null;
   canExtend: boolean;
   image: string;

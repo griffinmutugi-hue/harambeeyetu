@@ -5,6 +5,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { formatKES } from "@/lib/campaigns";
 import { closeCampaign, extendCampaign, getOrganizerDashboard } from "@/lib/campaigns.functions";
+import { getPaymentSettings, savePaymentSettings } from "@/lib/payments.functions";
 import type { Campaign } from "@/lib/campaigns";
 import { Plus, CalendarPlus, CircleCheck } from "lucide-react";
 import { useState } from "react";
@@ -86,6 +87,8 @@ function Dashboard() {
               <Stat label="Campaigns" value={String(data.campaigns.length)} />
               <Stat label="Donations" value={String(data.donations.length)} />
             </div>
+
+            <PaymentSetup />
 
             <h2 className="mt-8 font-display text-base font-bold">Your campaigns</h2>
             <div className="mt-3 space-y-3">
@@ -246,6 +249,149 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-border bg-card px-3 py-3">
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className="mt-1 font-display text-sm font-bold text-foreground">{value}</p>
+    </div>
+  );
+}
+
+function PaymentSetup() {
+  const fetchSettings = useServerFn(getPaymentSettings);
+  const save = useServerFn(savePaymentSettings);
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ["payment-settings"], queryFn: () => fetchSettings() });
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({
+    shortcodeType: "till" as "till" | "paybill",
+    shortcode: "",
+    tillNumber: "",
+    accountRef: "",
+    displayName: "",
+    passkey: "",
+    consumerKey: "",
+    consumerSecret: "",
+  });
+
+  if (!data) return null;
+
+  const openForm = () => {
+    setForm((f) => ({
+      ...f,
+      shortcodeType: data.shortcodeType,
+      shortcode: data.shortcode,
+      tillNumber: data.tillNumber,
+      accountRef: data.accountRef,
+      displayName: data.displayName,
+    }));
+    setOpen(true);
+  };
+
+  const submit = async () => {
+    setBusy(true);
+    try {
+      await save({ data: form });
+      await qc.invalidateQueries();
+      setForm((f) => ({ ...f, passkey: "", consumerKey: "", consumerSecret: "" }));
+      setOpen(false);
+      toast.success("Payment setup saved. Donations are open.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't save payment setup.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const field = "mt-1 w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-primary";
+  const secretHint = data.configured ? "Leave blank to keep current" : "";
+
+  return (
+    <div className="mt-8 rounded-2xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="font-display text-base font-bold">Payment setup</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {data.configured
+              ? `Donations go straight to ${data.displayName} (${data.shortcodeType === "till" ? "Till" : "Paybill"} ${data.shortcode}).`
+              : "Add your Till or Paybill so donors can pay you directly. Donations stay closed until this is set."}
+          </p>
+        </div>
+        {!open && (
+          <button
+            onClick={openForm}
+            className="shrink-0 rounded-full bg-foreground px-3.5 py-2 text-xs font-semibold text-background"
+          >
+            {data.configured ? "Edit" : "Set up"}
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <div className="flex gap-2">
+            {(["till", "paybill"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setForm({ ...form, shortcodeType: t })}
+                className={
+                  "flex-1 rounded-full py-2 text-xs font-semibold " +
+                  (form.shortcodeType === t ? "bg-foreground text-background" : "bg-secondary text-secondary-foreground")
+                }
+              >
+                {t === "till" ? "Till (Buy Goods)" : "Paybill"}
+              </button>
+            ))}
+          </div>
+          <label className="block text-xs font-semibold text-muted-foreground">
+            Business name shown to donors
+            <input className={field} value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} />
+          </label>
+          <label className="block text-xs font-semibold text-muted-foreground">
+            {form.shortcodeType === "till" ? "Store number (Daraja shortcode)" : "Paybill number"}
+            <input className={field} inputMode="numeric" value={form.shortcode} onChange={(e) => setForm({ ...form, shortcode: e.target.value })} />
+          </label>
+          {form.shortcodeType === "till" ? (
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Till number (if different from store number)
+              <input className={field} inputMode="numeric" value={form.tillNumber} onChange={(e) => setForm({ ...form, tillNumber: e.target.value })} />
+            </label>
+          ) : (
+            <label className="block text-xs font-semibold text-muted-foreground">
+              Account number shown to donors
+              <input className={field} value={form.accountRef} onChange={(e) => setForm({ ...form, accountRef: e.target.value })} />
+            </label>
+          )}
+          <p className="pt-1 text-[11px] text-muted-foreground">
+            Daraja credentials are encrypted and only used on the server to send payment prompts.
+          </p>
+          <label className="block text-xs font-semibold text-muted-foreground">
+            Passkey
+            <input className={field} type="password" autoComplete="off" placeholder={secretHint} value={form.passkey} onChange={(e) => setForm({ ...form, passkey: e.target.value })} />
+          </label>
+          <label className="block text-xs font-semibold text-muted-foreground">
+            Consumer key
+            <input className={field} type="password" autoComplete="off" placeholder={secretHint} value={form.consumerKey} onChange={(e) => setForm({ ...form, consumerKey: e.target.value })} />
+          </label>
+          <label className="block text-xs font-semibold text-muted-foreground">
+            Consumer secret
+            <input className={field} type="password" autoComplete="off" placeholder={secretHint} value={form.consumerSecret} onChange={(e) => setForm({ ...form, consumerSecret: e.target.value })} />
+          </label>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={submit}
+              disabled={busy}
+              className="flex-1 rounded-full bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
+            >
+              {busy ? "Saving…" : "Save"}
+            </button>
+            <button
+              onClick={() => setOpen(false)}
+              className="rounded-full border border-border px-5 py-3 text-sm font-semibold"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
