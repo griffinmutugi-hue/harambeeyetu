@@ -163,6 +163,68 @@ export type Database = {
           },
         ]
       }
+      payment_requests: {
+        Row: {
+          amount: number
+          campaign_id: string
+          checkout_request_id: string | null
+          created_at: string
+          donor_name: string | null
+          id: string
+          is_anonymous: boolean
+          merchant_request_id: string | null
+          message: string | null
+          mpesa_receipt: string | null
+          phone: string
+          result_code: number | null
+          result_desc: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          campaign_id: string
+          checkout_request_id?: string | null
+          created_at?: string
+          donor_name?: string | null
+          id?: string
+          is_anonymous?: boolean
+          merchant_request_id?: string | null
+          message?: string | null
+          mpesa_receipt?: string | null
+          phone: string
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          checkout_request_id?: string | null
+          created_at?: string
+          donor_name?: string | null
+          id?: string
+          is_anonymous?: boolean
+          merchant_request_id?: string | null
+          message?: string | null
+          mpesa_receipt?: string | null
+          phone?: string
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_requests_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
