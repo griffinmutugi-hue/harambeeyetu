@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as CampaignIdRouteImport } from './routes/campaign.$id'
 import { Route as ShareIdRouteImport } from './routes/share.$id'
 import { Route as ApiPublicCampaignImageIdRouteImport } from './routes/api/public/campaign-image.$id'
+import { Route as ApiPublicMpesaCallbackRouteImport } from './routes/api/public/mpesa/callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +59,11 @@ const ApiPublicCampaignImageIdRoute =
     path: '/api/public/campaign-image/$id',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMpesaCallbackRoute = ApiPublicMpesaCallbackRouteImport.update({
+  id: '/api/public/mpesa/callback',
+  path: '/api/public/mpesa/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/campaign/$id': typeof CampaignIdRoute
   '/share/$id': typeof ShareIdRoute
   '/api/public/campaign-image/$id': typeof ApiPublicCampaignImageIdRoute
+  '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/campaign/$id': typeof CampaignIdRoute
   '/share/$id': typeof ShareIdRoute
   '/api/public/campaign-image/$id': typeof ApiPublicCampaignImageIdRoute
+  '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/campaign/$id': typeof CampaignIdRoute
   '/share/$id': typeof ShareIdRoute
   '/api/public/campaign-image/$id': typeof ApiPublicCampaignImageIdRoute
+  '/api/public/mpesa/callback': typeof ApiPublicMpesaCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/campaign/$id'
     | '/share/$id'
     | '/api/public/campaign-image/$id'
+    | '/api/public/mpesa/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/campaign/$id'
     | '/share/$id'
     | '/api/public/campaign-image/$id'
+    | '/api/public/mpesa/callback'
   id:
     | '__root__'
     | '/'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/campaign/$id'
     | '/share/$id'
     | '/api/public/campaign-image/$id'
+    | '/api/public/mpesa/callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -126,6 +138,7 @@ export interface RootRouteChildren {
   CampaignIdRoute: typeof CampaignIdRoute
   ShareIdRoute: typeof ShareIdRoute
   ApiPublicCampaignImageIdRoute: typeof ApiPublicCampaignImageIdRoute
+  ApiPublicMpesaCallbackRoute: typeof ApiPublicMpesaCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -186,6 +199,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCampaignImageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mpesa/callback': {
+      id: '/api/public/mpesa/callback'
+      path: '/api/public/mpesa/callback'
+      fullPath: '/api/public/mpesa/callback'
+      preLoaderRoute: typeof ApiPublicMpesaCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -209,6 +229,7 @@ const rootRouteChildren: RootRouteChildren = {
   CampaignIdRoute: CampaignIdRoute,
   ShareIdRoute: ShareIdRoute,
   ApiPublicCampaignImageIdRoute: ApiPublicCampaignImageIdRoute,
+  ApiPublicMpesaCallbackRoute: ApiPublicMpesaCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

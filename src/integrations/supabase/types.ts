@@ -66,6 +66,7 @@ export type Database = {
           id: string
           organizer_name: string
           organizer_photo: string | null
+          payout_display_name: string | null
           status: string
           story: string | null
           title: string
@@ -82,6 +83,7 @@ export type Database = {
           id?: string
           organizer_name?: string
           organizer_photo?: string | null
+          payout_display_name?: string | null
           status?: string
           story?: string | null
           title: string
@@ -98,6 +100,7 @@ export type Database = {
           id?: string
           organizer_name?: string
           organizer_photo?: string | null
+          payout_display_name?: string | null
           status?: string
           story?: string | null
           title?: string
@@ -162,6 +165,96 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      organizer_payment_settings: {
+        Row: {
+          account_ref: string | null
+          consumer_key_enc: string
+          consumer_secret_enc: string
+          display_name: string
+          passkey_enc: string
+          shortcode: string
+          shortcode_type: string
+          till_number: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_ref?: string | null
+          consumer_key_enc: string
+          consumer_secret_enc: string
+          display_name: string
+          passkey_enc: string
+          shortcode: string
+          shortcode_type: string
+          till_number?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_ref?: string | null
+          consumer_key_enc?: string
+          consumer_secret_enc?: string
+          display_name?: string
+          passkey_enc?: string
+          shortcode?: string
+          shortcode_type?: string
+          till_number?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_requests: {
+        Row: {
+          amount: number
+          campaign_id: string
+          checkout_request_id: string | null
+          created_at: string
+          donor_name: string | null
+          id: string
+          is_anonymous: boolean
+          merchant_request_id: string | null
+          mpesa_receipt: string | null
+          phone: string
+          result_code: number | null
+          result_desc: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          campaign_id: string
+          checkout_request_id?: string | null
+          created_at?: string
+          donor_name?: string | null
+          id?: string
+          is_anonymous?: boolean
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone: string
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string
+          checkout_request_id?: string | null
+          created_at?: string
+          donor_name?: string | null
+          id?: string
+          is_anonymous?: boolean
+          merchant_request_id?: string | null
+          mpesa_receipt?: string | null
+          phone?: string
+          result_code?: number | null
+          result_desc?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
