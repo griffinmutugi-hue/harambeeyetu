@@ -452,7 +452,7 @@ function DonateModal({
 
             <button
               onClick={confirm}
-              disabled={status === "sending" || amount <= 0}
+              disabled={status === "sending" || status === "waiting" || amount <= 0 || phone.trim().length < 9}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground disabled:opacity-50"
             >
               <MessageCircle className="h-4 w-4" />
