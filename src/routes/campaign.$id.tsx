@@ -7,7 +7,12 @@ import { AppHeader } from "@/components/AppHeader";
 import { ProgressBar } from "@/components/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
 import { categoryLabel, formatKES, type CampaignDetail as CampaignDetailData, type Category } from "@/lib/campaigns";
-import { getCampaignDetail, postCampaignUpdate, submitDonation } from "@/lib/campaigns.functions";
+import {
+  getCampaignDetail,
+  getDonationStatus,
+  postCampaignUpdate,
+  startDonation,
+} from "@/lib/campaigns.functions";
 import { Check, MessageCircle, Share2, X } from "lucide-react";
 
 const detailQuery = (id: string) =>
@@ -299,13 +304,14 @@ function DonateModal({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const donate = useServerFn(submitDonation);
+  const donate = useServerFn(startDonation);
+  const checkStatus = useServerFn(getDonationStatus);
   const queryClient = useQueryClient();
   const [amount, setAmount] = useState(500);
   const [phone, setPhone] = useState("");
   const [name, setName] = useState("");
   const [anonymous, setAnonymous] = useState(false);
-  const [status, setStatus] = useState<"idle" | "sending" | "done">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "waiting" | "done">("idle");
   const [error, setError] = useState("");
   const [reference, setReference] = useState("");
 
@@ -318,11 +324,33 @@ function DonateModal({
         data: {
           campaignId,
           amount,
+          phone,
           donorName: anonymous ? "" : name.trim(),
           isAnonymous: anonymous,
         },
       });
-      setReference(res.reference);
+      setStatus("waiting");
+      const started = Date.now();
+      let result: { status: string; message: string | null; receipt: string | null } = {
+        status: "pending",
+        message: null,
+        receipt: null,
+      };
+      while (Date.now() - started < 120_000) {
+        await new Promise((r) => setTimeout(r, 4000));
+        result = await checkStatus({ data: { requestId: res.requestId } });
+        if (result.status !== "pending") break;
+      }
+      if (result.status !== "success") {
+        setError(
+          result.status === "failed"
+            ? result.message || "The payment was cancelled or failed."
+            : "We didn't get a confirmation in time. If you paid, it will show up shortly.",
+        );
+        setStatus("idle");
+        return;
+      }
+      setReference(result.receipt ?? "");
       await queryClient.invalidateQueries({ queryKey: ["campaign", campaignId] });
       await queryClient.invalidateQueries({ queryKey: ["campaigns", "active"] });
       setStatus("done");
@@ -424,14 +452,18 @@ function DonateModal({
 
             <button
               onClick={confirm}
-              disabled={status === "sending" || amount <= 0}
+              disabled={status === "sending" || status === "waiting" || amount <= 0 || phone.trim().length < 9}
               className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-accent py-4 font-display text-base font-bold text-accent-foreground disabled:opacity-50"
             >
               <MessageCircle className="h-4 w-4" />
-              {status === "sending" ? "Confirming…" : `Confirm ${formatKES(amount || 0)}`}
+              {status === "sending"
+                ? "Sending prompt…"
+                : status === "waiting"
+                  ? "Check your phone and enter your M-Pesa PIN"
+                  : `Confirm ${formatKES(amount || 0)}`}
             </button>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              Demo mode — no real money moves yet.
+              You'll get an M-Pesa prompt on your phone to approve the payment.
             </p>
           </>
         )}
