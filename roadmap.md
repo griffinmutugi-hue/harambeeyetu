@@ -1,4 +1,5 @@
 # Roadmap
 
 - [x] Store MPESA_CONSUMER_KEY secret
-- [ ] Direct-to-organizer M-Pesa STK push (plan in progress)
+- [x] M-Pesa STK push donations (sandbox, platform paybill)
+- [ ] Per-organizer Till/Paybill (waiting on user)
