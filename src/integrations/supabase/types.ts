@@ -64,8 +64,10 @@ export type Database = {
           deadline: string | null
           goal_amount: number
           id: string
+          organizer_mpesa: string | null
           organizer_name: string
           organizer_photo: string | null
+          paybill_reference: string
           status: string
           story: string | null
           title: string
@@ -80,8 +82,10 @@ export type Database = {
           deadline?: string | null
           goal_amount: number
           id?: string
+          organizer_mpesa?: string | null
           organizer_name?: string
           organizer_photo?: string | null
+          paybill_reference: string
           status?: string
           story?: string | null
           title: string
@@ -96,8 +100,10 @@ export type Database = {
           deadline?: string | null
           goal_amount?: number
           id?: string
+          organizer_mpesa?: string | null
           organizer_name?: string
           organizer_photo?: string | null
+          paybill_reference?: string
           status?: string
           story?: string | null
           title?: string
