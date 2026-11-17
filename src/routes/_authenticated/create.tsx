@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { AppHeader } from "@/components/AppHeader";
-import { type Category } from "@/lib/campaigns";
+import { normalizeKenyanMobile, type Category } from "@/lib/campaigns";
 import { createCampaign } from "@/lib/campaigns.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Upload, Heart, GraduationCap, Users, Sparkles, CalendarDays, Infinity } from "lucide-react";
@@ -41,6 +41,7 @@ function CreateCampaign() {
 
   const [title, setTitle] = useState("");
   const [organizer, setOrganizer] = useState("");
+  const [organizerMpesa, setOrganizerMpesa] = useState("");
   const [story, setStory] = useState("");
   const [goal, setGoal] = useState<number>(50000);
   const [category, setCategory] = useState<Category>("community");
@@ -51,7 +52,8 @@ function CreateCampaign() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const valid = title.trim().length > 3 && story.trim() && goal > 0 && file;
+  const normalizedOrganizerMpesa = normalizeKenyanMobile(organizerMpesa);
+  const valid = title.trim().length > 3 && story.trim() && goal > 0 && file && normalizedOrganizerMpesa;
 
   const handleFile = (f?: File) => {
     if (!f) return;
@@ -61,7 +63,7 @@ function CreateCampaign() {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!valid || !file) return;
+    if (!valid || !file || !normalizedOrganizerMpesa) return;
     setBusy(true);
     setError("");
     try {
@@ -84,6 +86,7 @@ function CreateCampaign() {
           category,
           coverPhoto: path,
           organizerName: organizer.trim(),
+          organizerMpesa: normalizedOrganizerMpesa,
           deadline:
             duration === "none"
               ? null
@@ -210,6 +213,23 @@ function CreateCampaign() {
             placeholder="Who's organizing this harambee?"
             className="input"
           />
+        </Field>
+
+        <Field label="M-Pesa Number">
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            required
+            value={organizerMpesa}
+            onChange={(e) => setOrganizerMpesa(e.target.value)}
+            placeholder="+254 7XX XXX XXX"
+            aria-invalid={organizerMpesa.length > 0 && !normalizedOrganizerMpesa}
+            className="input"
+          />
+          {organizerMpesa.length > 0 && !normalizedOrganizerMpesa && (
+            <p className="mt-1 text-xs text-flag-red">Enter a valid Kenyan number starting with +254 or 07.</p>
+          )}
         </Field>
 
         <Field label="Your story">

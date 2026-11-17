@@ -11,10 +11,13 @@ import {
   type CampaignDetail,
   type Category,
   type OrganizerDashboard,
+  normalizeKenyanMobile,
 } from "./campaigns";
 
 const BUCKET = "campaign-photos";
 const SIGNED_URL_TTL = 60 * 60 * 24 * 7;
+const CAMPAIGN_PUBLIC_COLUMNS =
+  "id, creator_id, organizer_name, title, story, goal_amount, current_amount, category, cover_photo, status, deadline, created_at, organizer_photo, completed_at, paybill_reference";
 
 function publicClient(): SupabaseClient<Database> {
   const key = process.env["SUPABASE_PUBLISHABLE_KEY"]!;
@@ -49,6 +52,7 @@ async function signPhotos(
 }
 
 type CampaignRow = Database["public"]["Tables"]["campaigns"]["Row"];
+type PublicCampaignRow = Omit<CampaignRow, "organizer_mpesa">;
 
 function resolvePhoto(path: string | null, photo: Record<string, string>): string {
   if (!path) return "";
@@ -56,7 +60,7 @@ function resolvePhoto(path: string | null, photo: Record<string, string>): strin
 }
 
 function toCampaign(
-  row: CampaignRow,
+  row: PublicCampaignRow,
   photo: Record<string, string>,
   latestUpdate: Campaign["latestUpdate"] = null,
 ): Campaign {
@@ -76,6 +80,7 @@ function toCampaign(
     ...lifecycle,
     image: resolvePhoto(row.cover_photo, photo),
     creatorId: row.creator_id,
+    paybillReference: row.paybill_reference,
     latestUpdate,
   };
 }
@@ -120,7 +125,7 @@ export const listActiveCampaigns = createServerFn({ method: "GET" }).handler(
     const client = publicClient();
     const { data, error } = await client
       .from("campaigns")
-      .select("*")
+      .select(CAMPAIGN_PUBLIC_COLUMNS)
       .eq("status", "active")
       .or(`deadline.is.null,deadline.gte.${nairobiToday()}`)
       .order("created_at", { ascending: false });
@@ -161,7 +166,7 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
     const client = publicClient();
     const { data: row, error } = await client
       .from("campaigns")
-      .select("*")
+      .select(CAMPAIGN_PUBLIC_COLUMNS)
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -209,7 +214,7 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
       supabase.from("profiles").select("name, profile_photo").eq("id", userId).maybeSingle(),
       supabase
         .from("campaigns")
-        .select("*")
+        .select(CAMPAIGN_PUBLIC_COLUMNS)
         .eq("creator_id", userId)
         .order("created_at", { ascending: false }),
     ]);
@@ -296,6 +301,15 @@ export const createCampaign = createServerFn({ method: "POST" })
         category: z.enum(["medical", "education", "community", "other"]),
         coverPhoto: z.string().trim().min(1),
         organizerName: z.string().trim().max(80).optional().default(""),
+        organizerMpesa: z
+          .string()
+          .trim()
+          .min(1, "Enter your M-Pesa number.")
+          .max(20, "Enter a valid Kenyan mobile number.")
+          .refine((value) => normalizeKenyanMobile(value) !== null, {
+            message: "Use a valid Kenyan mobile number starting with +254 or 07.",
+          })
+          .transform((value) => normalizeKenyanMobile(value) ?? ""),
         deadline: z.string().date().nullable().optional().default(null),
       })
       .parse(input),
@@ -328,6 +342,7 @@ export const createCampaign = createServerFn({ method: "POST" })
         goal_amount: data.goalAmount,
         category: data.category,
         cover_photo: data.coverPhoto,
+        organizer_mpesa: data.organizerMpesa,
         deadline: data.deadline,
       })
       .select("id")

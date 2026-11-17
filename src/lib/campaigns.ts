@@ -22,6 +22,7 @@ export type Campaign = {
   canExtend: boolean;
   image: string;
   creatorId: string | null;
+  paybillReference: string;
   latestUpdate: CampaignUpdate | null;
 };
 
@@ -65,6 +66,13 @@ export const categoryLabel: Record<Category, string> = {
 
 export function formatKES(n: number) {
   return "KES " + Math.round(n).toLocaleString("en-KE");
+}
+
+export function normalizeKenyanMobile(value: string): string | null {
+  const compact = value.trim().replace(/[\s()-]/g, "");
+  if (/^07\d{8}$/.test(compact)) return `+254${compact.slice(1)}`;
+  if (/^\+2547\d{8}$/.test(compact)) return compact;
+  return null;
 }
 
 export function daysUntil(deadline: string | null): number {

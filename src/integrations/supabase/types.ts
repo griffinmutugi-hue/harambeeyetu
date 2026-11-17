@@ -85,7 +85,7 @@ export type Database = {
           organizer_mpesa?: string | null
           organizer_name?: string
           organizer_photo?: string | null
-          paybill_reference: string
+          paybill_reference?: string
           status?: string
           story?: string | null
           title: string

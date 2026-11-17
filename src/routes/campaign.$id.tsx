@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
+import { Button } from "@/components/ui/button";
 import { ProgressBar } from "@/components/ProgressBar";
 import { useAuth } from "@/hooks/useAuth";
 import { categoryLabel, formatKES, type CampaignDetail as CampaignDetailData, type Category } from "@/lib/campaigns";
@@ -13,7 +14,7 @@ import {
   postCampaignUpdate,
   startDonation,
 } from "@/lib/campaigns.functions";
-import { Check, MessageCircle, Share2, X } from "lucide-react";
+import { Check, Copy, MessageCircle, Share2, X } from "lucide-react";
 
 const detailQuery = (id: string) =>
   queryOptions({
@@ -79,6 +80,7 @@ function CampaignDetail() {
   const { data: campaign } = useSuspenseQuery(detailQuery(id));
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [referenceCopied, setReferenceCopied] = useState(false);
 
   if (!campaign) {
     return (
@@ -90,6 +92,17 @@ function CampaignDetail() {
 
   const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
   const isOrganizer = !!user && !!campaign.creatorId && user.id === campaign.creatorId;
+
+  const copyPaybillReference = async () => {
+    try {
+      await navigator.clipboard.writeText(campaign.paybillReference);
+      setReferenceCopied(true);
+      toast.success("Paybill reference copied.");
+      window.setTimeout(() => setReferenceCopied(false), 2000);
+    } catch {
+      toast.error("Couldn't copy the reference. Please copy it manually.");
+    }
+  };
 
   const share = async () => {
     const url = `${window.location.origin}/campaign/${id}`;
@@ -162,6 +175,31 @@ function CampaignDetail() {
              </span>
           </div>
         </div>
+
+        <section className="mt-6 rounded-2xl border border-border bg-card p-4">
+          <h2 className="font-display text-base font-bold">Pay via M-Pesa</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Harambee Yetu test Paybill</p>
+          <p className="mt-1 font-display text-lg font-bold">174379</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Test number only — it cannot receive live donations.
+          </p>
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Account reference</p>
+              <p className="font-mono text-sm font-semibold">{campaign.paybillReference}</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              title="Copy reference"
+              aria-label={referenceCopied ? "Reference copied" : "Copy reference"}
+              onClick={copyPaybillReference}
+            >
+              {referenceCopied ? <Check /> : <Copy />}
+            </Button>
+          </div>
+        </section>
 
         <section className="mt-6">
           <h2 className="font-display text-base font-bold">The story</h2>
