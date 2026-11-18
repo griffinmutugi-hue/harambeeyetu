@@ -71,7 +71,7 @@ export function formatKES(n: number) {
 export function normalizeKenyanMobile(value: string): string | null {
   const compact = value.trim().replace(/[\s()-]/g, "");
   if (/^07\d{8}$/.test(compact)) return `+254${compact.slice(1)}`;
-  if (/^\+2547\d{8}$/.test(compact)) return compact;
+  if (/^\+254[17]\d{8}$/.test(compact)) return compact;
   return null;
 }
 

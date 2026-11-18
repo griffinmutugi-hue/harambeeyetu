@@ -95,7 +95,33 @@ function CampaignDetail() {
 
   const copyPaybillReference = async () => {
     try {
-      await navigator.clipboard.writeText(campaign.paybillReference);
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(campaign.paybillReference);
+        } catch {
+          const fallback = document.createElement("textarea");
+          fallback.value = campaign.paybillReference;
+          fallback.setAttribute("readonly", "");
+          fallback.style.position = "fixed";
+          fallback.style.opacity = "0";
+          document.body.appendChild(fallback);
+          fallback.select();
+          const copied = document.execCommand("copy");
+          fallback.remove();
+          if (!copied) throw new Error("Clipboard copy was unavailable.");
+        }
+      } else {
+        const fallback = document.createElement("textarea");
+        fallback.value = campaign.paybillReference;
+        fallback.setAttribute("readonly", "");
+        fallback.style.position = "fixed";
+        fallback.style.opacity = "0";
+        document.body.appendChild(fallback);
+        fallback.select();
+        const copied = document.execCommand("copy");
+        fallback.remove();
+        if (!copied) throw new Error("Clipboard copy was unavailable.");
+      }
       setReferenceCopied(true);
       toast.success("Paybill reference copied.");
       window.setTimeout(() => setReferenceCopied(false), 2000);
