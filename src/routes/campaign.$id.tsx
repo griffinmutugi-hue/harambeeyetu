@@ -102,8 +102,7 @@ function CampaignDetail() {
           const fallback = document.createElement("textarea");
           fallback.value = campaign.paybillReference;
           fallback.setAttribute("readonly", "");
-          fallback.style.position = "fixed";
-          fallback.style.opacity = "0";
+          fallback.className = "pointer-events-none fixed left-0 top-0 h-px w-px opacity-0";
           document.body.appendChild(fallback);
           fallback.select();
           const copied = document.execCommand("copy");
@@ -114,8 +113,7 @@ function CampaignDetail() {
         const fallback = document.createElement("textarea");
         fallback.value = campaign.paybillReference;
         fallback.setAttribute("readonly", "");
-        fallback.style.position = "fixed";
-        fallback.style.opacity = "0";
+        fallback.className = "pointer-events-none fixed left-0 top-0 h-px w-px opacity-0";
         document.body.appendChild(fallback);
         fallback.select();
         const copied = document.execCommand("copy");

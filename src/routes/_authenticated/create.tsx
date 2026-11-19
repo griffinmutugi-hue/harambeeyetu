@@ -215,8 +215,12 @@ function CreateCampaign() {
           />
         </Field>
 
-        <Field label="M-Pesa Number">
+        <div>
+          <label htmlFor="organizer-mpesa" className="text-xs font-semibold text-muted-foreground">
+            M-Pesa Number
+          </label>
           <input
+            id="organizer-mpesa"
             type="tel"
             inputMode="tel"
             autoComplete="tel"
@@ -230,7 +234,7 @@ function CreateCampaign() {
           {organizerMpesa.length > 0 && !normalizedOrganizerMpesa && (
             <p className="mt-1 text-xs text-flag-red">Enter a valid Kenyan number starting with +254 or 07.</p>
           )}
-        </Field>
+        </div>
 
         <Field label="Your story">
           <textarea
