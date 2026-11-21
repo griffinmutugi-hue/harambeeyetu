@@ -9,7 +9,7 @@ export function CampaignCard({ c }: { c: Campaign }) {
     <Link
       to="/campaign/$id"
       params={{ id: c.id }}
-      className="group block overflow-hidden rounded-3xl bg-card transition-transform active:scale-[0.99]"
+      className="group flex h-full flex-col overflow-hidden rounded-3xl bg-card transition-transform active:scale-[0.99]"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="relative aspect-[5/3] overflow-hidden">
@@ -29,7 +29,7 @@ export function CampaignCard({ c }: { c: Campaign }) {
           <Clock className="h-3 w-3" /> {c.deadline ? `${c.daysLeft}d left` : "No deadline"}
         </div>
       </div>
-      <div className="space-y-3 p-4">
+      <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
           <h3 className="font-display text-base font-bold leading-snug text-foreground">
             {c.title}
@@ -63,19 +63,21 @@ export function CampaignCard({ c }: { c: Campaign }) {
             </p>
           </div>
         )}
-        <ProgressBar raised={c.raised} goal={c.goal} />
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="font-display text-lg font-bold text-primary">
-              {formatKES(c.raised)}
-            </p>
-            <p className="text-[11px] text-muted-foreground">
-              raised of {formatKES(c.goal)} · {pct}%
-            </p>
+        <div className="mt-auto space-y-3">
+          <ProgressBar raised={c.raised} goal={c.goal} />
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="font-display text-lg font-bold text-primary">
+                {formatKES(c.raised)}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                raised of {formatKES(c.goal)} · {pct}%
+              </p>
+            </div>
+            <span className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground">
+              Donate
+            </span>
           </div>
-          <span className="rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground">
-            Donate
-          </span>
         </div>
       </div>
     </Link>
