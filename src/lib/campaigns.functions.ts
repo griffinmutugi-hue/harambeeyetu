@@ -11,6 +11,7 @@ import {
   type CampaignDetail,
   type Category,
   type OrganizerDashboard,
+  isApprovedCampaignPhotoPath,
   normalizeKenyanMobile,
 } from "./campaigns";
 
@@ -53,6 +54,16 @@ async function signPhotos(
 
 type CampaignRow = Database["public"]["Tables"]["campaigns"]["Row"];
 type PublicCampaignRow = Omit<CampaignRow, "organizer_mpesa">;
+
+function campaignPhotoPaths(
+  rows: Pick<CampaignRow, "creator_id" | "cover_photo" | "organizer_photo">[],
+): string[] {
+  return rows.flatMap((row) =>
+    [row.cover_photo, row.organizer_photo].filter((path): path is string =>
+      isApprovedCampaignPhotoPath(path, row.creator_id),
+    ),
+  );
+}
 
 function resolvePhoto(path: string | null, photo: Record<string, string>): string {
   if (!path) return "";
@@ -131,11 +142,9 @@ export const listActiveCampaigns = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const rows = data ?? [];
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [photos, { data: updates }] = await Promise.all([
-      signPhotos(client, [
-        ...rows.map((r) => r.cover_photo),
-        ...rows.map((r) => r.organizer_photo),
-      ]),
+      signPhotos(supabaseAdmin, campaignPhotoPaths(rows)),
       client
         .from("campaign_updates")
         .select("id, campaign_id, content, created_at")
@@ -172,6 +181,7 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     if (!row) return null;
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const [{ data: donations }, { data: updates }, photos] = await Promise.all([
       client
         .from("donation_feed")
@@ -184,7 +194,7 @@ export const getCampaignDetail = createServerFn({ method: "GET" })
         .select("id, content, created_at")
         .eq("campaign_id", data.id)
         .order("created_at", { ascending: false }),
-      signPhotos(client, [row.cover_photo, row.organizer_photo]),
+      signPhotos(supabaseAdmin, campaignPhotoPaths([row])),
     ]);
 
     const mappedUpdates = (updates ?? []).map((u) => ({
@@ -222,6 +232,10 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
     const rows = campaignRows ?? [];
     const ids = rows.map((r) => r.id);
     const titles = new Map(rows.map((r) => [r.id, r.title]));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const profilePhotoPaths = [profile?.profile_photo ?? null].filter((path): path is string =>
+      isApprovedCampaignPhotoPath(path, userId),
+    );
 
     const [{ data: donations }, { data: updates }, photos] = await Promise.all([
       ids.length
@@ -239,11 +253,7 @@ export const getOrganizerDashboard = createServerFn({ method: "GET" })
             .in("campaign_id", ids)
             .order("created_at", { ascending: false })
         : Promise.resolve({ data: [] as never[] }),
-      signPhotos(supabase, [
-        ...rows.map((r) => r.cover_photo),
-        ...rows.map((r) => r.organizer_photo),
-        profile?.profile_photo ?? null,
-      ]),
+      signPhotos(supabaseAdmin, [...campaignPhotoPaths(rows), ...profilePhotoPaths]),
     ]);
 
     const donorCounts = new Map<string, number>();
@@ -316,6 +326,9 @@ export const createCampaign = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<{ id: string }> => {
     const { supabase, userId } = context;
+    if (!data.coverPhoto.startsWith(`${userId}/`)) {
+      throw new Error("Upload a campaign photo before publishing.");
+    }
     const { data: profile } = await supabase
       .from("profiles")
       .select("name, email")

@@ -75,6 +75,27 @@ export function normalizeKenyanMobile(value: string): string | null {
   return null;
 }
 
+const TRUSTED_STATIC_CAMPAIGN_PHOTOS = new Set([
+  "seed/campaign-medical.jpg",
+  "seed/campaign-school.jpg",
+  "seed/campaign-flood.jpg",
+  "seed/campaign-community.jpg",
+  "seed/campaign-business.jpg",
+  "seed/campaign-fire.jpg",
+  "organizers/av1.jpg",
+  "organizers/av2.jpg",
+  "organizers/av3.jpg",
+  "organizers/av4.jpg",
+  "organizers/av5.jpg",
+  "organizers/av6.jpg",
+]);
+
+export function isApprovedCampaignPhotoPath(path: string | null, ownerId: string | null): boolean {
+  if (!path || path.startsWith("http")) return false;
+  if (TRUSTED_STATIC_CAMPAIGN_PHOTOS.has(path)) return true;
+  return !!ownerId && path.startsWith(`${ownerId}/`);
+}
+
 export function daysUntil(deadline: string | null): number {
   if (!deadline) return 0;
   const diff = deadlineEnd(deadline).getTime() - Date.now();

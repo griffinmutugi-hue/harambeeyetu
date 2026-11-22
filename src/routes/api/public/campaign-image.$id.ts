@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { Database } from "@/integrations/supabase/types";
+import { isApprovedCampaignPhotoPath } from "@/lib/campaigns";
 
 const BUCKET = "campaign-photos";
 
@@ -30,14 +31,18 @@ export const Route = createFileRoute("/api/public/campaign-image/$id")({
 
         const { data: campaign } = await client
           .from("campaigns")
-          .select("cover_photo")
+          .select("cover_photo, creator_id")
           .eq("id", parsed.data)
+          .in("status", ["active", "completed"])
           .maybeSingle();
 
         const path = campaign?.cover_photo;
-        if (!path || path.startsWith("http")) return new Response("Not found", { status: 404 });
+        if (!campaign || !path || !isApprovedCampaignPhotoPath(path, campaign.creator_id)) {
+          return new Response("Not found", { status: 404 });
+        }
 
-        const { data } = await client.storage.from(BUCKET).createSignedUrl(path, 60);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { data } = await supabaseAdmin.storage.from(BUCKET).createSignedUrl(path, 60);
         if (!data?.signedUrl) return new Response("Not found", { status: 404 });
 
         const image = await fetch(data.signedUrl);

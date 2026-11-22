@@ -1,3 +1,4 @@
 # Campaign payment details
 
 - Generate each permanent Paybill reference from the campaign UUID in the database, and keep organizer payout phone numbers inaccessible to public and authenticated table reads; public queries must select only explicit safe columns. This prevents predictable references from diverging across clients and prevents organizer phone numbers from leaking through `SELECT *`.
+- Keep direct campaign-photo storage reads owner-scoped; server handlers may issue short-lived links only after validating a public campaign reference, so public pages show approved photos without exposing unlinked files.
