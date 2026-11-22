@@ -36,6 +36,8 @@
   --color-flag-green: var(--flag-green);
   --color-flag-black: var(--flag-black);
   --color-cream: var(--cream);
+  --color-category-education: var(--category-education);
+  --color-category-other: var(--category-other);
 
   --font-display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
   --font-sans: "Inter", system-ui, sans-serif;
@@ -82,6 +84,8 @@
   --flag-red: oklch(0.55 0.18 28);
   --flag-black: oklch(0.18 0.015 60);
   --cream: oklch(0.975 0.012 85);
+  --category-education: oklch(0.49 0.13 247);
+  --category-other: oklch(0.5 0.13 74);
 
   --shadow-warm: 0 8px 24px -12px oklch(0.3 0.08 155 / 0.18);
   --shadow-card: 0 1px 2px oklch(0.18 0.015 60 / 0.05), 0 8px 24px -16px oklch(0.18 0.015 60 / 0.12);

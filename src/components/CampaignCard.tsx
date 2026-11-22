@@ -1,40 +1,75 @@
 import { Link } from "@tanstack/react-router";
 import { ProgressBar } from "./ProgressBar";
-import { categoryLabel, formatKES, type Campaign } from "@/lib/campaigns";
-import { Clock } from "lucide-react";
+import { categoryLabel, formatKES, type Campaign, type Category } from "@/lib/campaigns";
+import {
+  CircleHelp,
+  Clock,
+  GraduationCap,
+  HeartPulse,
+  UsersRound,
+} from "lucide-react";
+import { useState } from "react";
+
+const categoryIcons = {
+  medical: HeartPulse,
+  education: GraduationCap,
+  community: UsersRound,
+  other: CircleHelp,
+};
+
+const categoryPlaceholderClasses: Record<Category, string> = {
+  medical: "bg-flag-red/10 text-flag-red",
+  education: "bg-category-education/10 text-category-education",
+  community: "bg-flag-green/10 text-flag-green",
+  other: "bg-category-other/10 text-category-other",
+};
 
 export function CampaignCard({ c }: { c: Campaign }) {
   const pct = Math.min(100, Math.round((c.raised / c.goal) * 100));
+  const [failedImage, setFailedImage] = useState<string | null>(null);
+  const CategoryIcon = categoryIcons[c.category];
+  const showImage = Boolean(c.image) && c.image !== failedImage;
   return (
     <Link
       to="/campaign/$id"
       params={{ id: c.id }}
-      className="group flex h-full flex-col overflow-hidden rounded-3xl bg-card transition-transform active:scale-[0.99]"
+      className="group flex h-full min-w-0 flex-col overflow-hidden rounded-3xl bg-card transition-transform active:scale-[0.99]"
       style={{ boxShadow: "var(--shadow-card)" }}
     >
-      <div className="relative aspect-[5/3] overflow-hidden">
-        <img
-          src={c.image}
-          alt={c.title}
-          loading="lazy"
-          width={1024}
-          height={614}
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <div className="absolute left-3 top-3 chip bg-background/90 text-foreground backdrop-blur">
-          <span className="h-1.5 w-1.5 rounded-full bg-flag-red" />
-          {categoryLabel[c.category]}
-        </div>
-        <div className="absolute right-3 top-3 chip bg-flag-black/80 text-cream backdrop-blur">
-          <Clock className="h-3 w-3" /> {c.deadline ? `${c.daysLeft}d left` : "No deadline"}
+      <div className="relative h-[180px] shrink-0 overflow-hidden">
+        {showImage ? (
+          <img
+            src={c.image}
+            alt={c.title}
+            loading="lazy"
+            width={1024}
+            height={614}
+            onError={() => setFailedImage(c.image)}
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            aria-hidden="true"
+            className={`flex h-full w-full items-center justify-center ${categoryPlaceholderClasses[c.category]}`}
+          >
+            <CategoryIcon className="h-12 w-12 opacity-80" strokeWidth={1.6} />
+          </div>
+        )}
+        <div className="absolute inset-x-3 top-3 z-10 flex items-start justify-between gap-2">
+          <span className="chip whitespace-nowrap bg-flag-black/80 text-cream backdrop-blur">
+            <Clock className="h-3 w-3" /> {c.deadline ? `${c.daysLeft}d left` : "No deadline"}
+          </span>
+          <span className="chip whitespace-nowrap bg-background/90 text-foreground backdrop-blur">
+            {categoryLabel[c.category]}
+          </span>
         </div>
       </div>
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div>
-          <h3 className="font-display text-base font-bold leading-snug text-foreground">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-4">
+        <div className="min-w-0">
+          <h3 className="line-clamp-2 min-h-[2.75rem] break-words font-display text-base font-bold leading-snug text-foreground">
             {c.title}
           </h3>
-          <div className="mt-2 flex items-center gap-2">
+          <div className="mt-2 flex min-w-0 items-center gap-2">
             {c.organizerPhoto ? (
               <img
                 src={c.organizerPhoto}
@@ -50,11 +85,11 @@ export function CampaignCard({ c }: { c: Campaign }) {
                 {c.organizer.charAt(0).toUpperCase()}
               </span>
             )}
-            <p className="text-xs text-muted-foreground">by {c.organizer}</p>
+            <p className="min-w-0 truncate text-xs text-muted-foreground">by {c.organizer}</p>
           </div>
         </div>
         {c.latestUpdate && (
-          <div className="rounded-2xl bg-secondary px-3 py-2">
+          <div className="rounded-xl bg-secondary px-3 py-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary">
               Latest update · {c.latestUpdate.when}
             </p>

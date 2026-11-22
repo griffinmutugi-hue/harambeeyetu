@@ -45,7 +45,7 @@ function Discovery() {
     <div className="app-shell mx-0 max-w-none pb-12 shadow-none">
       <AppHeader />
 
-      <section className="grid gap-5 px-5 pb-7 pt-6 md:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)] md:items-end md:px-8 md:pb-10 md:pt-10 xl:px-12 xl:pb-12 xl:pt-12">
+      <section className="grid gap-5 px-5 pb-7 pt-6 md:grid-cols-[minmax(0,1fr)_minmax(20rem,0.8fr)] md:items-center md:px-8 md:pb-10 md:pt-10 xl:px-12 xl:pb-12 xl:pt-12">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-flag-red">
             Harambee · Tuko pamoja
@@ -54,7 +54,7 @@ function Discovery() {
             When we pull <span className="text-primary">together,</span> we lift each other.
           </h1>
         </div>
-        <div className="mt-1 flex items-center gap-3 rounded-2xl border border-border bg-card p-3 md:mt-0 md:p-4">
+        <div className="mt-1 flex items-center gap-3 rounded-2xl border border-border bg-card p-3 md:mt-0 md:w-full md:max-w-md md:justify-self-end md:p-4">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           </span>
